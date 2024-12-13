@@ -1,0 +1,816 @@
+// Makul::create([
+// 'mata_kuliah' => '',
+// 'kode' => '',
+// 'sks' => '',
+// 'semester' => '',
+// 'IsPilihan' => false,
+// ]);
+
+//Semester 1
+// Makul::create([
+// 'mata_kuliah' => 'Pancasila',
+// 'kode' => 'MKWU2',
+// 'jenis_makul' => true,
+// 'sks' => '2',
+// 'semester' => '1',
+// 'IsPilihan' => false,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Bahasa Inggris',
+// 'kode' => 'UMG-55201-103',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '1',
+// 'IsPilihan' => false,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Agama',
+// 'kode' => 'MKWU1',
+// 'sks' => '3',
+// 'semester' => '1',
+// 'IsPilihan' => false,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Matematika Dasar 1',
+// 'kode' => 'INF-55201-101',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '1',
+// 'IsPilihan' => false,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Logika Informatika',
+// 'kode' => 'INF-55201-102',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '1',
+// 'IsPilihan' => false,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Dasar Pemrograman',
+// 'kode' => 'INF-55201-103',
+// 'jenis_makul' => false,
+// 'sks' => '4',
+// 'semester' => '1',
+// 'IsPilihan' => false,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Pengantar Teknik Informatika',
+// 'kode' => 'INF-55201-104',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '1',
+// 'IsPilihan' => false,
+// ]);
+
+// //Semester 2
+// Makul::create([
+// 'mata_kuliah' => 'Kewarganegaraan',
+// 'kode' => 'MKWU3',
+// 'jenis_makul' => true,
+// 'sks' => '2',
+// 'semester' => '2',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Bahasa Indonesia',
+// 'kode' => 'MKWU4',
+// 'jenis_makul' => true,
+// 'sks' => '2',
+// 'semester' => '2',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Probabilitas dan Statistika',
+// 'kode' => 'INF-55201-105',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '2',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Matematika Dasar II',
+// 'kode' => 'INF-55201-106',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '2',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Organisasi dan Arsitektur Komputer',
+// 'kode' => 'INF-55201-107',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '2',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Dasar Rekayasa Perangkat Lunak',
+// 'kode' => 'INF-55201-108',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '2',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Struktur Data dan Algoritma',
+// 'kode' => 'INF-55201-109',
+// 'jenis_makul' => false,
+// 'sks' => '4',
+// 'semester' => '2',
+// ]);
+
+// //Semester 3
+// Makul::create([
+// 'mata_kuliah' => 'Perangcangan Basis Data',
+// 'kode' => 'INF-55201-201',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '3',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Teori Graf',
+// 'kode' => 'INF-55201-202',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '3',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Matematika Diskrit',
+// 'kode' => 'INF-55201-203',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '3',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Metode Numerik',
+// 'kode' => 'INF-55201-204',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '3',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Jaringan Komputer',
+// 'kode' => 'INF-55201-205',
+// 'jenis_makul' => false,
+// 'sks' => '4',
+// 'semester' => '3',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Strategi Algortima',
+// 'kode' => 'INF-55201-206',
+// 'jenis_makul' => false,
+// 'sks' => '4',
+// 'semester' => '3',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Sistem Operasi',
+// 'kode' => 'INF-55201-207',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '3',
+// ]);
+
+// //Semester 4
+// Makul::create([
+// 'mata_kuliah' => 'Manajemen Basis Data',
+// 'kode' => 'INF-55201-208',
+// 'jenis_makul' => false,
+// 'sks' => '4',
+// 'semester' => '4',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Otomata',
+// 'kode' => 'INF-55201-209',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '4',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Sistem Paralel dan Terdistribusi',
+// 'kode' => 'INF-55201-210',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '4',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Pemrograman Berorientasi Objek',
+// 'kode' => 'INF-55201-211',
+// 'jenis_makul' => false,
+// 'sks' => '4',
+// 'semester' => '4',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Analisis dan Perancangan Sistem',
+// 'kode' => 'INF-55201-212',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '4',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Sistem Informasi',
+// 'kode' => 'INF-55201-213',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '4',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Sistem Pendukung Keputusan',
+// 'kode' => 'INF-55201-214',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '4',
+// ]);
+
+// //Semester 5
+// Makul::create([
+// 'mata_kuliah' => 'Interaksi Manusia dan Komputer',
+// 'kode' => 'INF-55201-301',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '5',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Pemrograman Web',
+// 'kode' => 'INF-55201-302',
+// 'jenis_makul' => false,
+// 'sks' => '4',
+// 'semester' => '5',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Pemrograman Jaringan',
+// 'kode' => 'INF-55201-303',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '5',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Sistem Tertanam',
+// 'kode' => 'INF-55201-304',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '5',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Kecerdasan Buatan',
+// 'kode' => 'INF-55201-305',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '5',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Manajemen Proyek Perangkat Lunak',
+// 'kode' => 'INF-55201-306',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '5',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Penulisan Proposal Tugas Akhir',
+// 'kode' => 'INF-55201-307',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '5',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Riset Operasi',
+// 'kode' => 'INF-55201-308',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '5',
+// ]);
+
+// //Semester 6
+// Makul::create([
+// 'mata_kuliah' => 'Teori Komputer Grafis',
+// 'kode' => 'INF-55201-309',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '6',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Keamanan Informasi dan Jaringan',
+// 'kode' => 'INF-55201-310',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '6',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Sosio Etika dan Profesi',
+// 'kode' => 'INF-55201-311',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '6',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'MK Pilihan Wajib Komputasi (PBA)',
+// 'kode' => 'INF-55201-312',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '6',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'MK Pilihan Wajib Jaringan (Jaringan Nirkabel)',
+// 'kode' => 'INF-55201-313',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '6',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'MK Pilihan Wajib Multimedia & SIG (SIG)',
+// 'kode' => 'INF-55201-314',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '6',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Proyek Perangkat Lunak',
+// 'kode' => 'INF-55201-315',
+// 'jenis_makul' => false,
+// 'sks' => '4',
+// 'semester' => '6',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Kerja Praktik',
+// 'kode' => 'INF-55201-316',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '6',
+// ]);
+
+
+// //Semester 7
+// Makul::create([
+// 'mata_kuliah' => 'Teknopreneur',
+// 'kode' => 'INF-55201-401',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'PMKM',
+// 'kode' => 'INF-55201-402',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '7',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'MK Pilihan 4',
+// 'kode' => 'INF-55201-403',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'MK Pilihan 5',
+// 'kode' => 'INF-55201-404',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'MK Pilihan 6',
+// 'kode' => 'INF-55201-405',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'TA 1 (Proposal)',
+// 'kode' => 'INF-55201-406',
+// 'jenis_makul' => false,
+// 'sks' => '2',
+// 'semester' => '7',
+// ]);
+
+// //Semester 8
+// Makul::create([
+// 'mata_kuliah' => 'TA 2',
+// 'kode' => 'INF-55201-407',
+// 'jenis_makul' => false,
+// 'sks' => '4',
+// 'semester' => '8',
+// ]);
+
+
+//Pilihan (Semester ??) (Kode Teracak Juga)
+// Makul::create([
+// 'mata_kuliah' => '',
+// 'kode' => '',
+// 'sks' => '',
+// 'semester' => '',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Pengolahan Citra Digital',
+// 'kode' => 'INF-55201-506',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Pemrograman Perangkat Bergerak',
+// 'kode' => 'INF-55201-515',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Data Mining',
+// 'kode' => 'INF-55201-516',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Komputasi Awan',
+// 'kode' => 'INF-55201-523',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'SIG II',
+// 'kode' => 'INF-55201-532',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Instruksional Berbantuan Komputer/CAI',
+// 'kode' => 'INF-55201-535',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Kriptografi',
+// 'kode' => 'INF-55201-538',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Basis Data Multimedia',
+// 'kode' => 'INF-55201-539',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Manajemen Rantai Pasok',
+// 'kode' => 'INF-55201-542',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Fisika Model',
+// 'kode' => 'INF-55201-543',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Forensik Digital',
+// 'kode' => 'INF-55201-531',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Virtual & Augmented Reality',
+// 'kode' => 'INF-55201-528',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Logika Fuzzy',
+// 'kode' => 'INF-55201-536',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Jaringan Saraf Tiruan',
+// 'kode' => 'INF-55201-541',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+// Makul::create([
+// 'mata_kuliah' => 'Penalaran Berbasis Kasus',
+// 'kode' => 'INF-55201-540',
+// 'jenis_makul' => false,
+// 'sks' => '3',
+// 'semester' => '7',
+// 'IsPilihan' => true,
+// ]);
+$semesters = [
+'1' => [
+'mata_kuliah' => [
+'Pendidikan Pancasila',
+'Pendidikan Agama',
+'Bahasa  Inggris  ',
+'Matematika  Dasar I',
+'Logika Informatika',
+'Dasar  Pemrograman*',
+'Pengantar Teknik Informatika'
+],
+'kode' => [
+'UMG-55201-101',
+'UMG-55201-105',
+'UMG-55201-103',
+'INF-55201-101',
+'INF-55201-102',
+'INF-55201-103',
+'INF-55201-104'
+],
+'jenis_makul' => [
+true,
+true,
+true,
+false,
+false,
+false,
+false
+],
+'sks' => [
+2,
+3,
+2,
+3,
+3,
+4,
+2
+],
+'IsPilihan' => [
+false,
+false,
+false,
+false,
+false,
+false,
+false
+],
+],
+'2' => [
+'mata_kuliah' => [
+'Kewarganegaraan',
+'Bahasa Indonesia',
+'Probabilitas dan Statistik',
+'Matematika Dasar II',
+'Organisasi dan Arsitektur Komputer',
+'Dasar rekayasa perangkat lunak',
+'Struktur Data dan Algoritma*'
+],
+'kode' => [
+'UMG-55201-104',
+'UMG-55201-102',
+'INF-55201-105',
+'INF-55201-106',
+'INF-55201-107',
+'INF-55201-108',
+'INF-55201-109'
+],
+'jenis_makul' => [
+true,
+true,
+false,
+false,
+false,
+false,
+false
+],
+'sks' => [
+2,
+2,
+3,
+3,
+3,
+3,
+4
+],
+],
+'3' => [
+'mata_kuliah' => [
+'Perancangan Basis Data',
+'Teori Graf',
+'Matematika Diskrit',
+'Metode Numerik*',
+'Jaringan Komputer *',
+'Strategi Algoritma*',
+'Sistem Operasi*'
+],
+'kode' => [
+'INF-55201-201',
+'INF-55201-202',
+'INF-55201-203',
+'INF-55201-204',
+'INF-55201-205',
+'INF-55201-206',
+'INF-55201-207'
+],
+'jenis_makul' => [
+false,
+false,
+false,
+false,
+false,
+false,
+false
+],
+'sks' => [
+2,
+2,
+3,
+3,
+4,
+4,
+3
+],
+],
+'4' => [
+'mata_kuliah' => [
+'Manajemen Basis Data*',
+'Otomata',
+'Sistem Paralel dan Terdistribusi',
+'Pemrograman Berorientasi Objek*',
+'Analisis dan Perancangan Sistem',
+'Sistem Informasi',
+'Sistem Pendukung Keputusan'
+],
+'kode' => [
+'INF-55201-208',
+'INF-55201-209',
+'INF-55201-210',
+'INF-55201-211',
+'INF-55201-212',
+'INF-55201-213',
+'INF-55201-214'
+],
+'jenis_makul' => [
+false,
+false,
+false,
+false,
+false,
+false,
+false
+],
+'sks' => [
+4,
+2,
+3,
+4,
+3,
+2,
+3
+],
+],
+'5' => [
+'mata_kuliah' => [
+'Interaksi Manusia dan Komputer',
+'Pemrograman Web*',
+'Pemrograman Jaringan*',
+'Sistem Tertanam*',
+'Kecerdasan Buatan',
+'Manajemen Proyek Perangkat Lunak',
+'Penulisan Proposal Tugas Akhir',
+'Riset Operasi'
+],
+'kode' => [
+'INF-55201-301',
+'INF-55201-302',
+'INF-55201-303',
+'INF-55201-304',
+'INF-55201-305',
+'INF-55201-306',
+'INF-55201-310',
+'INF-55201-311'
+],
+'jenis_makul' => [
+false,
+false,
+false,
+false,
+false,
+false,
+false,
+false
+],
+'sks' => [
+2,
+4,
+3,
+3,
+3,
+2,
+2,
+2
+],
+],
+'6' => [
+'mata_kuliah' => [
+'Teori Komputer Grafis',
+'Keamanan Informasi dan Jaringan*',
+'Sosio dan Etika Profesi',
+'MK Pilihan Wajib Komputasi (PBA)',
+'MK Pilihan Wajib Jaringan (Jaringan Nirkabel )',
+'MK Pilihan Wajib Multimedia & SIG (SIG)',
+'Proyek Perangkat Lunak*',
+'Kerja Praktik ',
+'PMKM'
+],
+'kode' => [
+'INF-55201-307',
+'INF-55201-309',
+'INF-55201-312',
+'INF-55201-313',
+'INF-55201-314',
+'INF-55201-315',
+'INF-55201-316',
+'INF-55201-308',
+'INF-55201-402'
+],
+'jenis_makul' => [
+false,
+false,
+false,
+false,
+false,
+false,
+false,
+false,
+false
+],
+'sks' => [
+2,
+3,
+2,
+3,
+3,
+3,
+4,
+2,
+2
+],
+],
+'7' => [
+'mata_kuliah' => [
+'Teknopreneur',
+'TA 1 (Proposal)'
+],
+'kode' => [
+'INF-55201-401',
+'INF-55201-406'
+],
+'jenis_makul' => [
+false,
+false,
+false,
+false,
+false,
+false
+],
+'sks' => [
+3,
+2
+],
+],
+'8' => [
+'mata_kuliah' => [
+'TA 2'
+],
+'kode' => [
+'INF-55201-407'
+],
+'jenis_makul' => [
+false
+],
+'sks' => [
+4
+],
+],
+];
+foreach ($semesters as $semester => $data) {
+$count = count($data['mata_kuliah']);
+for ($i = 0; $i < $count; $i++) {
+    Makul::create([ 'mata_kuliah'=> $data['mata_kuliah'][$i],
+    'kode' => $data['kode'][$i],
+    'jenis_makul' => $data['jenis_makul'][$i],
+    'sks' => $data['sks'][$i],
+    'semester' => $semester,
+    'IsPilihan' => isset($data['IsPilihan']) ? $data['IsPilihan'][$i] : false,
+    ]);
+    }
+    }

@@ -1,0 +1,613 @@
+@extends('ui_dashboard.dashboard')
+@section('title', 'Penjadwalan Mata Kuliah')
+@section('pageSize', 'min-height: 1300px;')
+@section('css')
+    <style>
+        .modal-xl {
+            max-width: 90%;
+            /* Change this percentage to make it larger or smaller */
+        }
+    </style>
+@endsection
+@section('headScript')
+    <link rel="stylesheet" href="{{ asset('plugins/icheck-bootstrap/icheck-bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('plugins/icheck-bootstrap/icheck-bootstrap.css') }}">
+@endsection
+@section('script')
+    <script>
+        $(document).ready(function() {
+
+            // ========================================
+            // Penjadwalan Mata Kuliah Semester Card (Regular Courses)
+            // ========================================
+
+            // Function to load Mata Kuliah based on semester via AJAX
+            // Modify the AJAX functions that generate the rows to trigger a Kode Ajar update after success
+            // Test
+            function loadMakul(semester) {
+                $.ajax({
+                    url: '{{ route('adminSchedulingInputAjax') }}',
+                    method: 'GET',
+                    data: {
+                        semester: semester
+                    },
+                    success: function(response) {
+                        $('#makulTable tbody').html(response.html); // Populate table with new data
+                        updateTextareaKodeAjar
+                            (); // Update the Kode Ajar textarea after rows are updated
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Terjadi kesalahan saat memuat data Mata Kuliah! Error: ' + error);
+                    }
+                });
+            }
+
+            // Initialize page by loading the initial Mata Kuliah for the selected semester
+            loadMakul('{{ $semester }}');
+
+            // Handle semester change event and reload Mata Kuliah when the user selects a different semester
+            $('#semesterSelector').change(function() {
+                var selectedSemester = $(this).val();
+                loadMakul(selectedSemester);
+            });
+
+            // ========================================
+            // Mata Kuliah Pilihan Card (Elective Courses)
+            // ========================================
+
+            // Function to load Mata Kuliah Pilihan via AJAX
+            function loadMakulPilihan() {
+                $.ajax({
+                    url: '{{ route('adminSchedulingInputAjax') }}',
+                    method: 'GET',
+                    data: {
+                        semester: '{{ $semester }}', // Use the current semester
+                        is_pilihan: true // This flag marks the request as "Mata Kuliah Pilihan"
+                    },
+                    success: function(response) {
+                        $('#makulPilihanTable tbody').html(response
+                            .html); // Populate Mata Kuliah Pilihan table with new data
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Terjadi kesalahan saat memuat data Mata Kuliah Pilihan! Error: ' +
+                            error);
+                    }
+                });
+            }
+
+            // Initialize Mata Kuliah Pilihan when the page loads
+            loadMakulPilihan();
+
+            // ========================================
+            // Event delegation for "Otomatis" buttons in both regular and Mata Kuliah Pilihan cards
+            // ========================================
+            $(document).on('click', '.btn-buat-kelas', function() {
+                var row = $(this).closest('tr'); // Get the closest table row
+                var makulKode = row.data('kode'); // Get Mata Kuliah code
+                var kodeInfo = row.data('info'); // Get Mata Kuliah info (name, SKS, etc.)
+                var kuota = $('#kuota-' + makulKode).val(); // Get the class quota
+                var jumlahMahasiswa = row.find('.jumlah-mahasiswa').text(); // Number of students
+                var jumlahKelas = Math.ceil(jumlahMahasiswa / kuota); // Calculate the number of classes
+
+                // Debugging log
+                // console.log('Button clicked for Makul:', makulKode);
+                // console.log('Jumlah Kelas:', jumlahKelas);
+
+                // Clear any existing class rows for Mata Kuliah Pilihan
+                $('#class-rows-' + makulKode + ' tbody').empty();
+
+                // Create new class rows based on the number of classes needed
+                for (let i = 0; i < jumlahKelas; i++) {
+                    let classLetter = String.fromCharCode(65 + i); // Generate class letter (A, B, C...)
+
+                    // Generate the new row HTML for Mata Kuliah Pilihan
+                    var newRow = `
+                        <tr data-info="${kodeInfo}" data-kode="${makulKode}" data-kelas="${classLetter}" data-semester="${row.data('semester')}" data-sks="${row.data('sks')}">
+                            <td>${classLetter}</td>
+                            <td>
+                                <select class="form-control dosen1-select" name="dosen1_${makulKode}_${classLetter}" data-makul="${makulKode}" data-class="${classLetter}">
+                                    <option value="">Pilih Dosen 1</option>
+                                    @foreach ($dosens as $dosen)
+                                        <option value="{{ $dosen->kode_dosen }}">{{ $dosen->nama_dosen }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-control dosen2-select" name="dosen2_${makulKode}_${classLetter}" data-makul="${makulKode}" data-class="${classLetter}">
+                                    <option value="">Pilih Dosen 2 (Optional)</option>
+                                    @foreach ($dosens as $dosen)
+                                        <option value="{{ $dosen->kode_dosen }}">{{ $dosen->nama_dosen }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td class="kode-ajar">${kodeInfo} <span style="color: red;">(Dosen Belum Dipilih)</span></td>
+                            <td>
+                                <button class="btn btn-danger btn-hapus-kelas" data-kelas="${classLetter}" data-kode="${makulKode}">Hapus</button>
+                            </td>
+                        </tr>`;
+                    // Append the new class row to the relevant table in Mata Kuliah Pilihan
+                    $('#class-rows-' + makulKode + ' tbody').append(newRow);
+                }
+                updateTextareaKodeAjar();
+            });
+
+            // ========================================
+            // Event handler for deleting class rows
+            // ========================================
+            $(document).on('click', '.btn-hapus-kelas', function() {
+                $(this).closest('tr').remove(); // Remove the class row
+                updateTextareaKodeAjar();
+            });
+
+            // ========================================
+            // Event handler for "Hapus Semua Kelas" button
+            // ========================================
+            $(document).on('click', '.btn-hapus-semua-kelas', function() {
+                var makulKode = $(this).data('kode'); // Get Mata Kuliah code
+                // Clear all class rows for this Mata Kuliah
+                $('#class-rows-' + makulKode + ' tbody').empty();
+                updateTextareaKodeAjar();
+            });
+
+            // ========================================
+            // Event handler for "Manual" dropdown items
+            // ========================================
+            $(document).on('click', '.manual-kelas-option', function(e) {
+                e.preventDefault(); // Prevent default anchor click behavior
+
+                var makulKode = $(this).data('kode'); // Get Mata Kuliah code
+                var jumlahKelas = $(this).data('kelas'); // Get selected number of classes
+                var row = $('#row-makul-' + makulKode); // Get the row for this Mata Kuliah
+                var kodeInfo = row.data('info'); // Get Mata Kuliah info (name, SKS, etc.)
+
+                // Clear any existing class rows for this Mata Kuliah
+                $('#class-rows-' + makulKode + ' tbody').empty();
+
+                // Generate the selected number of class rows
+                for (let i = 0; i < jumlahKelas; i++) {
+                    let classLetter = String.fromCharCode(65 + i); // Generate class letter (A, B, C...)
+                    var newRow = `
+                        <tr data-info="${kodeInfo}" data-kode="${makulKode}" data-kelas="${classLetter}" data-semester="${row.data('semester')}" data-sks="${row.data('sks')}">
+                            <td>${classLetter}</td>
+                            <td>
+                                <select class="form-control dosen1-select" name="dosen1_${makulKode}_${classLetter}" data-makul="${makulKode}" data-class="${classLetter}">
+                                    <option value="">Pilih Dosen 1</option>
+                                    @foreach ($dosens as $dosen)
+                                        <option value="{{ $dosen->kode_dosen }}">{{ $dosen->nama_dosen }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-control dosen2-select" name="dosen2_${makulKode}_${classLetter}" data-makul="${makulKode}" data-class="${classLetter}">
+                                    <option value="">Pilih Dosen 2 (Optional)</option>
+                                    @foreach ($dosens as $dosen)
+                                        <option value="{{ $dosen->kode_dosen }}">{{ $dosen->nama_dosen }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td class="kode-ajar">${kodeInfo} <span style="color: red;">(Dosen Belum Dipilih)</span></td>
+                            <td>
+                                <button class="btn btn-danger btn-hapus-kelas" data-kelas="${classLetter}" data-kode="${makulKode}">Hapus</button>
+                            </td>
+                        </tr>`;
+                    // Append the new class row to the relevant table
+                    $('#class-rows-' + makulKode + ' tbody').append(newRow);
+                }
+                updateTextareaKodeAjar();
+            });
+
+            // ========================================
+            // Fetch and Update Dosen Options (For Dosen Selection)
+            // ========================================
+            function updateDosenOptions(row) {
+                var selectedDosen1 = row.find('.dosen1-select').val(); // Get Dosen 1 selected value
+                var selectedDosen2 = row.find('.dosen2-select').val(); // Get Dosen 2 selected value
+
+                var dosen1Select = row.find('.dosen1-select');
+                var dosen2Select = row.find('.dosen2-select');
+
+                // Reset all options (show all options initially)
+                dosen1Select.find('option').show();
+                dosen2Select.find('option').show();
+
+                // Disable selected Dosen 2 in Dosen 1 options
+                if (selectedDosen2) {
+                    dosen1Select.find(`option[value="${selectedDosen2}"]`).hide();
+                }
+
+                // Disable selected Dosen 1 in Dosen 2 options
+                if (selectedDosen1) {
+                    dosen2Select.find(`option[value="${selectedDosen1}"]`).hide();
+                }
+            }
+
+            // Handle Dosen 1 selection change
+            $(document).on('change', '.dosen1-select', function() {
+                var row = $(this).closest('tr');
+                updateDosenOptions(row); // Update the other dropdown based on selection
+
+                // Update Kode Ajar
+                var classLetter = row.find('td:first').text(); // Get class letter
+                var dosen1 = $(this).val(); // Get selected Dosen 1
+                var dosen2 = row.find('.dosen2-select').val(); // Get selected Dosen 2
+
+                updateKodeAjar(row, classLetter, dosen1, dosen2);
+            });
+
+            // Handle Dosen 2 selection change
+            $(document).on('change', '.dosen2-select', function() {
+                var row = $(this).closest('tr');
+                updateDosenOptions(row); // Update the other dropdown based on selection
+
+                // Update Kode Ajar
+                var classLetter = row.find('td:first').text(); // Get class letter
+                var dosen1 = row.find('.dosen1-select').val(); // Get selected Dosen 1
+                var dosen2 = $(this).val(); // Get selected Dosen 2
+
+                updateKodeAjar(row, classLetter, dosen1, dosen2);
+            });
+
+            // Function to dynamically update the Kode Ajar based on selected Dosen and Class
+            function updateKodeAjar(row, classLetter, dosen1, dosen2) {
+                var kodeInfo = row.data('info'); // Get Mata Kuliah info
+                var classType = dosen2 ? `S${classLetter} ${classLetter}` : classLetter;
+                var kodeDosen = dosen2 ? `${dosen1}/${dosen2}` : dosen1 ||
+                    '<span style="color: red;">Dosen Belum Dipilih</span>';
+
+                var kodeAjar = `${kodeInfo} ${classType} ${kodeDosen}`;
+                row.find('.kode-ajar').html(kodeAjar); // Update the Kode Ajar in the row
+
+                // Update the textarea with the new Kode Ajar
+                updateTextareaKodeAjar();
+            }
+
+            // Test
+            // Helper function to collect and update the textarea with all Kode Ajar values
+            function updateTextareaKodeAjar() {
+                var kodeAjarTexts = [];
+
+                // Loop through all rows that have Kode Ajar
+                $('.kode-ajar').each(function() {
+                    var kodeAjar = $(this).text(); // Get Kode Ajar text from the row
+                    if (kodeAjar && kodeAjar.trim() !== "") {
+                        kodeAjarTexts.push(kodeAjar.trim()); // Push the trimmed value to the array
+                    }
+                });
+
+                // Join all Kode Ajar strings and update the textarea
+                $('#inputDescription').val(kodeAjarTexts.join('\n'));
+            }
+
+            // ========================================
+            // Scheduling Form Submission (Save Button)
+            // ========================================
+            $('#scheduling-form').on('submit', function(e) {
+                e.preventDefault(); // Prevent default form submission
+
+                var formData = $(this).serialize(); // Serialize form data
+
+                $.ajax({
+                    url: '/admin/scheduling/input/save',
+                    method: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        alert('Data saved successfully!');
+                    },
+                    error: function(xhr, status, error) {
+                        alert('An error occurred while saving the data.');
+                    }
+                });
+            });
+
+            // ========================================
+            // Checkbox Limit for Mata Kuliah Pilihan
+            // ========================================
+            $(document).on('change', '.makul-checkbox', function() {
+                const maxSelected = 6; // Maximum number of checkboxes allowed
+
+                const selected = $('.makul-checkbox:checked'); // Get all selected checkboxes
+                if (selected.length > maxSelected) {
+                    alert(`You can only select up to ${maxSelected} Mata Kuliah Pilihan.`);
+                    $(this).prop('checked', false); // Uncheck if more than allowed
+                }
+
+                // Disable unchecked checkboxes if the limit is reached
+                if (selected.length >= maxSelected) {
+                    $('.makul-checkbox:not(:checked)').prop('disabled', true);
+                } else {
+                    $('.makul-checkbox').prop('disabled', false); // Re-enable if below limit
+                }
+            });
+
+            // ========================================
+            // Fetch and display number of students for each Mata Kuliah
+            // ========================================
+            function fetchJumlahMahasiswa() {
+                let kodeMasaInput = '{{ $masaInput->kode_masa_input ?? '' }}'; // Use Blade variable
+
+                if (!kodeMasaInput) {
+                    kodeMasaInput = $('#kode_masa_input').val(); // Fallback to input field
+                }
+
+                $.ajax({
+                    url: '{{ route('get.jumlah.mahasiswa') }}',
+                    method: 'GET',
+                    data: {
+                        kode_masa_input: kodeMasaInput
+                    },
+                    success: function(response) {
+                        $.each(response, function(kode, jumlah) {
+                            let row = $('#row-makul-' + kode);
+                            if (row.length > 0) {
+                                row.find('.jumlah-mahasiswa').text(jumlah);
+                            }
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Error fetching jumlah mahasiswa:', xhr);
+                        alert("Failed to fetch jumlah mahasiswa. Please try again.");
+                    }
+                });
+            }
+
+            // Initialize page with the number of students
+            fetchJumlahMahasiswa();
+
+            // Handle manual refresh of jumlah mahasiswa
+            $('#refreshJumlahMahasiswa').on('click', function() {
+                fetchJumlahMahasiswa();
+            });
+
+        });
+    </script>
+@endsection
+@section('content')
+    <div class="content">
+        <div class="container-fluid">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title center-text">Penjadwalan</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse" title="Collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Input Configuration (Textarea for Kode Ajar) -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="inputDescription">Kode Ajar</label>
+                                <textarea id="inputDescription" name="inputDescription" class="form-control" rows="4" style="height: 121px;"
+                                    readonly></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Buat Jadwal Button -->
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success btn-block" data-toggle="modal"
+                            data-target="#buatJadwalModal">Buat Jadwal</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-6">
+                    <!-- Regular Mata Kuliah Table (Penjadwalan Mata Kuliah Semester Genap) -->
+                    <div class="card card-primary card-outline collapsed-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Penjadwalan Mata Kuliah Semester
+                                {{ $semester == 0 ? 'Ganjil' : 'Genap' }}</h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <table id="makulTable" class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th width="5%">No</th>
+                                        <th width="25%">Mata Kuliah</th>
+                                        <th width="25%">Jumlah Mahasiswa</th>
+                                        <th width="20%">Kuota Kelas</th>
+                                        <th width="25%">Aksi Jumlah Kelas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($makuls as $makul)
+                                        <tr id="row-makul-{{ $makul->kode }}" data-kode="{{ $makul->kode }}"
+                                            data-info="{{ $makul->mata_kuliah }} SEM-{{ $makul->semester }} SKS-{{ $makul->sks }}">
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>{{ $makul->mata_kuliah }}</td>
+                                            <td class="jumlah-mahasiswa">{{ $jumlahMahasiswa[$makul->kode] ?? 0 }}</td>
+                                            <td>
+                                                <input type="number" name="kuota_{{ $makul->kode }}"
+                                                    id="kuota-{{ $makul->kode }}" class="form-control" min="1"
+                                                    max="99" value="20">
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-primary btn-buat-kelas"
+                                                    data-kode="{{ $makul->kode }}">Buat
+                                                    Kelas</button>
+                                            </td>
+                                        </tr>
+                                        <tr class="class-rows" id="class-rows-{{ $makul->kode }}">
+                                            <td colspan="5">
+                                                <table class="table table-bordered">
+                                                    <tbody></tbody>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <!-- Mata Kuliah Pilihan Table (IsPilihan = True) -->
+                    <div class="card card-primary card-outline collapsed-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Mata Kuliah Pilihan</h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <table id="makulPilihanTable" class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th width="3%"></th> <!-- Add space for styled checkbox -->
+                                        <th width="2%">No</th>
+                                        <th width="25%">Mata Kuliah</th>
+                                        <th width="25%">Jumlah Mahasiswa</th>
+                                        <th width="20%">Kuota Kelas</th>
+                                        <th width="25%">Aksi Jumlah Kelas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($makulPilihan as $makul)
+                                        <tr id="row-makul-{{ $makul->kode }}">
+                                            <!-- Checkbox column -->
+                                            <td>
+                                                <div class="icheck-pomegranate d-inline">
+                                                    <input type="checkbox" class="makul-checkbox"
+                                                        id="checkbox{{ $makul->kode }}" name="makulPilihan[]"
+                                                        value="{{ $makul->kode }}">
+                                                    <label for="checkbox{{ $makul->kode }}"></label>
+                                                </div>
+                                            </td>
+
+                                            <!-- Other columns -->
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>
+                                                <div class="row">
+                                                    {{ $makul->mata_kuliah }}
+                                                </div>
+                                                <div class="row">
+                                                    ({{ $makul->kode }})
+                                                </div>
+                                            </td>
+                                            <td class="jumlah-mahasiswa">{{ $jumlahMahasiswa[$makul->kode] ?? 0 }}</td>
+                                            <td>
+                                                <input type="number" name="kuota_{{ $makul->kode }}"
+                                                    id="kuota-{{ $makul->kode }}" class="form-control" min="1"
+                                                    max="99" value="20">
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-primary btn-buat-kelas"
+                                                    data-kode="{{ $makul->kode }}">Buat
+                                                    Kelas</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Special Mata Kuliah: Kerja Praktik, PMKM, TA 1, TA 2 -->
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">Kerja Praktik, PMKM, TA 1, TA 2</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Mata Kuliah</th>
+                                <th>Jumlah Mahasiswa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($specialMakuls as $makul)
+                                <tr id="row-makul-{{ $makul->kode }}">
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td>{{ $makul->mata_kuliah }}</td>
+                                    <td class="jumlah-mahasiswa">{{ $jumlahMahasiswa[$makul->kode] ?? 0 }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal HTML -->
+    <div class="modal fade" id="buatJadwalModal" tabindex="-1" aria-labelledby="buatJadwalModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="buatJadwalModalLabel">Jadwal Kelas</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- Display the fetched data here as a string -->
+                    <div id="jadwalData">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th width="5%">Hari</th>
+                                    <th width="20%">Jadwal Kuliah</th>
+                                    <th width="20%">Pilih Kode Ajar</th>
+                                    <th width="10%">Kode MK</th>
+                                    <th width="7%">Kode Dosen</th>
+                                    <th width="3%">Dosen 1</th>
+                                    <th width="3%">Dosen 2</th>
+                                    <th width="2%">Kelas</th>
+                                    <th width="2%">SMTR</th>
+                                    <th width="2%">SKS</th>
+                                    <th width="3%">Kapasitas</th>
+                                    <th width="20%">Nama Pengajar</th>
+                                    <th width="3%">Ruang</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Senin</td>
+                                    {{-- Row Senin --}}
+                                </tr>
+                                <tr>
+                                    <td>Selasa</td>
+                                    {{-- Row Selasa --}}
+                                </tr>
+                                <tr>
+                                    <td>Rabu</td>
+                                    {{-- Row Rabu --}}
+                                </tr>
+                                <tr>
+                                    <td>Kamis</td>
+                                    {{-- Row Kamis --}}
+                                </tr>
+                                <tr>
+                                    <td>Jumat</td>
+                                    {{-- Row Jumat --}}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-primary">Save Jadwal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection

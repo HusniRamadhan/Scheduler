@@ -1,0 +1,65 @@
+public function run()
+{
+$faker = Faker::create();
+$semesters = config('semester'); // Get semester data from config
+$semesterChoices = array_keys($semesters); // Get available semesters
+$sksLimit = 24; // Maximum SKS per user
+
+// Loop through each even semester and create at least 50 users for each
+foreach ($semesterChoices as $semester) {
+if ($semester % 2 == 0) {
+for ($i = 1; $i <= 50; $i++) {
+    // Create a new user
+    $user=User::create([ 'name'=> $faker->name,
+    'email' => $faker->unique()->safeEmail,
+    'password' => bcrypt('password'), // Default password
+    'role' => 'member', // All users are members
+    ]);
+
+    // Create a new mahasiswa
+    $mahasiswa = Mahasiswa::create([
+    'name' => $faker->name,
+    'NIM' => $faker->unique()->numerify('D10411####'),
+    'angkatan' => $faker->numberBetween(2018, 2024),
+    'user_id' => $user->id,
+    ]);
+
+    // Generate Makul Inputs with SKS limit logic
+    $this->generateMakulInput($mahasiswa, $user, $semester, $semesters, $sksLimit);
+    }
+    }
+    }
+    }
+
+    private function generateMakulInput($mahasiswa, $user, $semester, $semesters, $sksLimit)
+    {
+    $faker = Faker::create();
+    $availableCourses = $semesters[$semester]; // Get courses for the selected semester
+    $makulInput = [];
+    $totalSks = 0;
+
+    foreach ($availableCourses['kode'] as $index => $kode) {
+    $sks = $availableCourses['sks'][$index];
+
+    // Ensure total SKS does not exceed the 24 SKS limit
+    if ($totalSks + $sks > $sksLimit) {
+    break;
+    }
+
+    $makulInput[] = [
+    'urutan' => $index + 1,
+    'kode' => $kode,
+    'sks' => $sks
+    ];
+
+    $totalSks += $sks;
+    }
+
+    // Create a MakulInput entry with the collected courses
+    MakulInput::create([
+    'semester' => $semester,
+    'tahun_ajaran' => 'TA024025EVEN', // Fixed value
+    'makul_input' => json_encode($makulInput), // Store as JSON
+    'user_id' => $mahasiswa->user_id,
+    'NIM' => $mahasiswa->NIM,
+    ]);

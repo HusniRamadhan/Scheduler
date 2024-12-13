@@ -1,0 +1,206 @@
+@extends('ui_dashboard.dashboard')
+@section('title', 'Pra Lirs Mahasiswa')
+@section('script')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add event listener for input buttons
+            document.querySelectorAll('.input-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const value = this.getAttribute('data-value');
+                    const detail = this.getAttribute('data-detail');
+                    const semester = this.getAttribute('data-semester');
+
+                    // Redirect to the input page with query parameters
+                    window.location.href =
+                        `/user/pralirs/input?id=${id}&value=${value}&detail=${encodeURIComponent(detail)}&semester=${semester}`;
+                });
+            });
+
+            // Set the semester dropdown based on URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const semester = urlParams.get('semester');
+            if (semester) {
+                document.getElementById('semester').value = semester;
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const rows = document.querySelectorAll('#masaInputTableBody tr');
+            rows.forEach(row => {
+                const semester = parseInt(row.getAttribute('data-semester'), 10);
+                if (semester > 14) {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    </script>
+    <script>
+        $('.cek-input-btn').on('click', function() {
+            var kodeMasaInput = $(this).data('value');
+
+            $.ajax({
+                url: '/fetch-makul-inputs/' + kodeMasaInput,
+                type: 'GET',
+                success: function(response) {
+                    var makulInputsData = response.makul_inputs; // Assuming this returns JSON data
+                    var modalBodyContent =
+                        '<table class="table"><thead><tr><th>Mata Kuliah</th><th>SKS</th></tr></thead><tbody>';
+
+                    makulInputsData.forEach(function(makul) {
+                        modalBodyContent += '<tr data-kode="' + makul.kode + '" urutan="' +
+                            makul.urutan + '">';
+                        modalBodyContent += '<td class="sks-cell">' + makul.kode + '</td>';
+                        modalBodyContent += '<td class="text-center">' + makul.sks + '</td>';
+                        modalBodyContent += '</tr>';
+                    });
+
+                    modalBodyContent += '</tbody></table>';
+
+                    $('#modal-body-content').html(modalBodyContent);
+                },
+                error: function() {
+                    $('#modal-body-content').html('<p>Failed to fetch data.</p>');
+                }
+            });
+        });
+    </script>
+@endsection
+@section('content')
+    <div class="content">
+        <div class="container-fluid">
+            {{-- Tabel Masa Input Pra Lirs --}}
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">Tabel Masa Input Pra Lirs</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table id="masaInputTable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th width="10%">Tahun Ajaran</th>
+                                <th width="10%">Semester</th>
+                                <th width="10%">Jangka Waktu</th>
+                                <th>Keterangan</th>
+                                <th width="10%">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="masaInputTableBody">
+                            @foreach ($masaInputs as $masaInput)
+                                @php
+                                    $currentDate = \Carbon\Carbon::now();
+                                    $dateRange = explode(' - ', $masaInput->jangka_waktu);
+                                    $startDate = \Carbon\Carbon::createFromFormat('d/m/Y', $dateRange[0])->subDay();
+                                    $endDate = \Carbon\Carbon::createFromFormat('d/m/Y', $dateRange[1])->addDay();
+                                    $isInRange = $currentDate->between($startDate, $endDate);
+
+                                    $tahunAjaranParts = explode('/', $masaInput->tahun_ajaran);
+                                    $tahunAjaranStart = (int) $tahunAjaranParts[0];
+
+                                    $mahasiswa = $mahasiswas->first(); // Assuming only one mahasiswa per row, adjust if needed
+                                    $angkatanYear = $mahasiswa->angkatan;
+                                    $semesterValue =
+                                        ($tahunAjaranStart - $angkatanYear) * 2 + ($masaInput->semester == 0 ? 1 : 2);
+                                @endphp
+                                @php
+                                    $makulInputExists = $makulInputs
+                                        ->where('user_id', auth()->id())
+                                        ->where('tahun_ajaran', $masaInput->kode_masa_input)
+                                        ->first();
+                                @endphp
+                                <tr data-value="{{ $masaInput->kode_masa_input }}"
+                                    data-detail="Tahun Ajaran: {{ $masaInput->tahun_ajaran }} {{ $masaInput->semester == 0 ? 'Ganjil' : 'Genap' }}"
+                                    data-semester="{{ $semesterValue }}">
+                                    <td>{{ $masaInput->tahun_ajaran }}</td>
+                                    <td>{{ $masaInput->semester == 0 ? 'Ganjil' : 'Genap' }}</td>
+                                    <td>{{ $masaInput->jangka_waktu }}</td>
+                                    <td>{{ $masaInput->keterangan }}</td>
+                                    <td class="text-center">
+                                        @if ($isInRange)
+                                            @if ($makulInputExists)
+                                                <button
+                                                    onclick="location.href='{{ route('userInput', [
+                                                        'id' => $makulInputExists->id,
+                                                        'value' => $makulInputExists->tahun_ajaran,
+                                                        'detail' => $makulInputExists->makul_input,
+                                                        'semester' => $makulInputExists->semester,
+                                                        'data-input' => 'Edit',
+                                                    ]) }}'"
+                                                    class="btn btn-warning">Edit</button>
+                                            @endif
+                                            {{-- <button type="button" class="btn btn-sm btn-secondary input-btn">Print</button> --}}
+                                        @else
+                                            <button type="button" class="btn btn-sm btn-primary input-btn"
+                                                data-id="{{ $masaInput->id }}"
+                                                data-value="{{ $masaInput->kode_masa_input }}"
+                                                data-detail="Tahun Ajaran: {{ $masaInput->tahun_ajaran }} {{ $masaInput->semester == 0 ? 'Ganjil' : 'Genap' }}"
+                                                data-semester="{{ $semesterValue }}">Input</button>
+                                        @endif
+                                        <button disabled class="btn btn-sm btn-danger">
+                                            Waktu Input Sudah Terlewati
+                                        </button>
+                                        @if ($makulInputExists)
+                                            <button class="btn btn-sm btn-primary cek-input-btn"
+                                                data-value="{{ $masaInput->kode_masa_input }}" data-toggle="modal"
+                                                data-target="#modal-primary">
+                                                Cek Input
+                                            </button>
+                                        @else
+                                            <button disabled class="btn btn-sm btn-danger">
+                                                Tidak Ada input
+                                            </button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div><!-- /.container-fluid -->
+    </div>
+    <div class="modal fade" id="modal-primary" style="display: none;" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-primary">
+                <div class="modal-header">
+                    <h4 class="modal-title">
+                        Input {{ $activeInput->semester == 0 ? 'Ganjil' : 'Genap' }}
+                        {{ $activeInput->tahun_ajaran ?? 'N/A' }}
+                    </h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="modal-body-content">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Mata Kuliah</th>
+                                <th>SKS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($makulInputs as $makulInput)
+                                @foreach ($makulInput->makul_input_data as $makul)
+                                    <tr data-kode="{{ $makul['kode'] }}" urutan="{{ $makul['urutan'] }}">
+                                        <td class="sks-cell">{{ $makul['mata_kuliah'] }}</td>
+                                        <td class="text-center">{{ $makul['sks'] }}</td>
+                                    </tr>
+                                @endforeach
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-outline-light" data-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection

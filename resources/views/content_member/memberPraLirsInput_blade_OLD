@@ -1,0 +1,419 @@
+@extends('ui_dashboard.dashboard')
+@section('title', 'Input Pra Lirs')
+@section('pageSize', 'min-height: 1300px;')
+@section('css')
+    <!-- Drag and Drop Sorting -->
+    <link rel="stylesheet" href="{{ asset('dist/css/dragndropsorting.css') }}">
+    <style>
+        /* Define background colors for SKS thresholds */
+        .sks-low {
+            background-color: #d4edda;
+        }
+
+        /* Green for SKS <= 10 */
+        .sks-medium {
+            background-color: #fff3cd;
+        }
+
+        /* Yellow for 11 <= SKS <= 18 */
+        .sks-high {
+            background-color: #f8d7da;
+        }
+
+        /* Red for 19 <= SKS <= 24 */
+    </style>
+@endsection
+@section('headScript')
+    <script>
+        // Function to show/hide semester cards based on selected dropdown value
+        function showSemesterCards() {
+            var selectedSemester = parseInt(document.getElementById('semester').value);
+
+            // Hide all semester cards
+            for (var i = 1; i <= 14; i++) {
+                var card = document.getElementById('semesterCard' + i);
+                if (card) {
+                    card.style.display = 'none';
+                }
+            }
+
+            // Determine which cards to show based on selected semester
+            if (selectedSemester % 2 !== 0) {
+                // Odd semesters: 1, 3, 5, 7 + Pilihan (if semester >= 7)
+                if (selectedSemester >= 1) document.getElementById('semesterCard1').style.display = 'block';
+                if (selectedSemester >= 3) document.getElementById('semesterCard3').style.display = 'block';
+                if (selectedSemester >= 5) document.getElementById('semesterCard5').style.display = 'block';
+                if (selectedSemester >= 7) {
+                    document.getElementById('semesterCard7').style.display = 'block';
+                    document.getElementById('pilihanCard').style.display = 'block';
+                }
+                if (selectedSemester >= 9) document.getElementById('semesterCard9').style.display = 'block';
+                if (selectedSemester >= 11) document.getElementById('semesterCard11').style.display = 'block';
+                if (selectedSemester >= 13) document.getElementById('semesterCard13').style.display = 'block';
+            } else {
+                // Even semesters: 2, 4, 6, 8 + Pilihan (if semester >= 7)
+                if (selectedSemester >= 2) document.getElementById('semesterCard2').style.display = 'block';
+                if (selectedSemester >= 4) document.getElementById('semesterCard4').style.display = 'block';
+                if (selectedSemester >= 6) document.getElementById('semesterCard6').style.display = 'block';
+                if (selectedSemester >= 8) {
+                    document.getElementById('semesterCard8').style.display = 'block';
+                    document.getElementById('pilihanCard').style.display = 'block';
+                }
+                if (selectedSemester >= 10) document.getElementById('semesterCard10').style.display = 'block';
+                if (selectedSemester >= 12) document.getElementById('semesterCard12').style.display = 'block';
+                if (selectedSemester >= 14) document.getElementById('semesterCard14').style.display = 'block';
+            }
+
+            // Fetch total SKS for the selected semester using AJAX
+            fetch('/get-total-sks/' + selectedSemester)
+                .then(response => response.json())
+                .then(data => {
+                    // Update the total SKS input fields
+                    document.getElementById('total_semester').value = data.total_sks;
+                    document.getElementById('sisa_semester').value = data.remaining_sks;
+                    updateSKSColor(data.total_sks);
+                });
+        }
+
+        // Function to update the SKS color based on the total SKS
+        function updateSKSColor(totalSKS) {
+            var sksClass = '';
+            if (totalSKS <= 10) {
+                sksClass = 'sks-low';
+            } else if (totalSKS <= 18) {
+                sksClass = 'sks-medium';
+            } else if (totalSKS <= 24) {
+                sksClass = 'sks-high';
+            }
+
+            var sortableList = document.getElementById('sortable-list');
+            sortableList.classList.remove('sks-low', 'sks-medium', 'sks-high');
+            sortableList.classList.add(sksClass);
+        }
+
+        // Initial execution to set the initial state
+        window.onload = function() {
+            showSemesterCards();
+        };
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ambil semua tombol collapse
+            var collapseButtons = document.querySelectorAll('[data-card-widget="collapse"]');
+
+            collapseButtons.forEach(function(button) {
+                // Tambahkan event listener untuk setiap tombol collapse
+                button.addEventListener('click', function() {
+                    // Ambil card terkait dengan tombol yang diklik
+                    var card = button.closest('.card');
+
+                    // Ambil semua card yang bukan card yang sedang diklik
+                    var otherCards = document.querySelectorAll('.card:not(#' + card.id + ')');
+
+                    // Tutup (uncollapse) semua card yang bukan card yang sedang diklik
+                    otherCards.forEach(function(otherCard) {
+                        var cardWidget = otherCard.querySelector(
+                            '[data-card-widget="collapse"]');
+                        if (cardWidget) {
+                            var cardBody = otherCard.querySelector('.card-body');
+                            if (cardBody.style.display === 'block') {
+                                cardWidget.click();
+                            }
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    {{-- <script>
+        $(document).ready(function() {
+            const sksLimits = {
+                low: 10,
+                medium: 18,
+                high: Infinity
+            };
+
+            function addCourse(makul, sks, kode) {
+                const sortableList = $("#selected-courses");
+                const newItem = `
+            <tr class="sortable-item" data-sks="${sks}" data-kode="${kode}">
+                <td class="align-middle">${makul}</td>
+                <td class="align-middle" style="width: 20px">${sks}</td>
+                <td class="text-center" style="width: 100px">
+                    <span class="btn btn-danger remove-course">
+                        <i class="fas fa-minus"></i>
+                    </span>
+                </td>
+            </tr>
+        `;
+                sortableList.append(newItem);
+                updateSksTotal();
+            }
+
+            function calculateTotalSks() {
+                let total = 0;
+                $("#selected-courses .sortable-item").each(function() {
+                    total += parseInt($(this).data("sks"));
+                });
+                return total;
+            }
+
+            function getSksClass(totalSks) {
+                if (totalSks <= sksLimits.low) {
+                    return "sks-low";
+                } else if (totalSks <= sksLimits.medium) {
+                    return "sks-medium";
+                } else {
+                    return "sks-high";
+                }
+            }
+
+            function updateSksTotal() {
+                let total = calculateTotalSks();
+                const totalSksClass = getSksClass(total);
+
+                $("#selected-courses .sortable-item").each(function() {
+                    $(this).removeClass("sks-low sks-medium sks-high").addClass(totalSksClass);
+                });
+
+                // Update the input field for total SKS
+                $("#total_semester").val(total);
+                $("#sisa_semester").val(24 - total); // Assuming 24 is the max SKS limit
+            }
+
+            $(document).on("click", ".btn-success", function() {
+                const makul = $(this).data("makul");
+                const sks = $(this).data("sks");
+                const kode = $(this).data("kode");
+
+                addCourse(makul, sks, kode);
+            });
+
+            $(document).on("click", ".remove-course", function() {
+                $(this).closest(".sortable-item").remove();
+                updateSksTotal();
+            });
+
+            $("#sortable-list tbody").sortable({
+                update: function(event, ui) {
+                    updateSksTotal();
+                }
+            }).disableSelection();
+        });
+    </script> --}}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Function to check if an existing record exists
+        function checkExistingInput() {
+            var tahunAjaran = $('#tahunAjaranSelect').val(); // Only fetch tahunAjaran
+
+            console.log('Checking existing input for tahunAjaran:', tahunAjaran); // Debugging
+
+            $.ajax({
+                url: '{{ route('checkExistingInput') }}', // Ensure this route is correct
+                type: 'POST',
+                data: {
+                    tahunAjaran: tahunAjaran, // Send only tahunAjaran
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    console.log('Response from server:', response);
+                    if (response.status === 'exist') {
+                        // If the record exists, change the button to "Submit Edit"
+                        $('#submitButton').attr('value', 'edit').text('Submit Edit');
+                    } else {
+                        // If the record does not exist, change the button to "Submit"
+                        $('#submitButton').attr('value', 'create').text('Submit');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX request failed:', error);
+                }
+            });
+        }
+
+        // Trigger the check when the tahun ajaran changes
+        $('#tahunAjaranSelect').on('change', function() {
+            checkExistingInput();
+        });
+
+        // Initial check on page load
+        checkExistingInput();
+    });
+</script>
+@endsection
+@section('script')
+    <!-- Drag and Drop Sorting -->
+    <script src="{{ asset('dist/js/dragndropsorting.js') }}"></script>
+@endsection
+@section('content')
+    <div class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card card-primary card-outline">
+                        <div class="card-header" data-card-widget="collapse">
+                            <h3 class="card-title">Masa Input Pra Lirs</h3>
+                        </div>
+                        <div class="card-body">
+                            {{-- Input masa aktif input pra lirs ke database --}}
+                            <form action="{{ route('store.input') }}" method="POST">
+                                @csrf
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Semester</label>
+                                            <select class="custom-select rounded-0" id="semester" name="semester"
+                                                onchange="showSemesterCards()">
+                                                @for ($i = 1; $i <= 14; $i++)
+                                                    <option value="{{ $i }}"
+                                                        {{ request()->get('semester') == $i ? 'selected' : '' }}>
+                                                        {{ $i }}</option>
+                                                @endfor
+                                            </select>
+                                        </div>
+                                    </div>
+                                    {{-- <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>Total SKS Semester</label>
+                                            <input type="text" id="total_semester" class="form-control" value=""
+                                                disabled>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>Total SKS Tambahan</label>
+                                            <input type="text" id="sisa_semester" class="form-control" value=""
+                                                disabled>
+                                        </div>
+                                    </div> --}}
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Total SKS dari Mata Kuliah yang Dipilih</label>
+                                            <input type="text" id="inputName" class="form-control" value=""
+                                                disabled>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row" style="display:none;">
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label for="tahunAjaranSelect">Tahun Ajaran Input</label>
+                                            <select id="tahunAjaranSelect" name="tahunAjaranSelect" class="form-control">
+                                                @if (isset($value) && isset($detail))
+                                                    <option value="{{ $value }}">{{ $detail }}</option>
+                                                @else
+                                                    <option value="">Please select a valid input period</option>
+                                                @endif
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row" style="display:none;">
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label for="inputDescription">Input Configuration</label>
+                                            <textarea id="inputDescription" name="inputDescription" class="form-control" rows="4" style="height: 121px;"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{-- Initial button, will be changed by JavaScript based on the AJAX result --}}
+                                <button type="submit" id="submitButton" name="action" value="create" style="float:right;"
+                                    class="btn btn-primary">
+                                    Submit
+                                </button>
+                                {{-- <button type="submit" style="float:right;" class="btn btn-primary">Submit Edit</button> --}}
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="row">
+                        <div class="col-6">
+                            {{-- Semester --}}
+                            @for ($i = 1; $i <= $maxSemester; $i++)
+                                <div class="card card-primary collapsed-card" id="semesterCard{{ $i }}">
+                                    <div class="card-header" data-card-widget="collapse">
+                                        <h3 class="card-title">Mata Kuliah Semester {{ $i }}</h3>
+                                    </div>
+                                    <div class="card-body" style="display: none;">
+                                        <div class="row">
+                                            <table class="table table-bordered">
+                                                {{-- Tampilkan Mata Kuliah Sesuai Semester --}}
+                                                <tbody>
+                                                    @foreach ($makuls as $makul)
+                                                        @if ($makul->semester == $i)
+                                                            <tr data-semester="{{ $i }}"
+                                                                data-kode="{{ $makul->kode }}">
+                                                                <td class="align-middle">{{ $makul->mata_kuliah }}</td>
+                                                                <td class="align-middle" style="width: 20px">
+                                                                    {{ $makul->sks }}</td>
+                                                                <td class="text-center" style="width: 100px">
+                                                                    <span class="btn btn-success"
+                                                                        data-makul="{{ $makul->mata_kuliah }}"
+                                                                        data-sks="{{ $makul->sks }}"
+                                                                        data-kode="{{ $makul->kode }}">
+                                                                        <i class="fas fa-plus"></i>
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        @endif
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endfor
+                            {{-- Mata Kuliah Pilihan --}}
+                            <div class="card card-primary collapsed-card" id="pilihanCard" style="display: none;">
+                                <div class="card-header" data-card-widget="collapse">
+                                    <h3 class="card-title">Mata Kuliah Pilihan</h3>
+                                </div>
+                                <div class="card-body" style="display: none;">
+                                    <div class="row">
+                                        <table class="table table-bordered">
+                                            <tbody>
+                                                @foreach ($makuls as $makul)
+                                                    @if ($makul->is_pilihan)
+                                                        <tr data-semester="{{ $makul->semester }}"
+                                                            data-kode="{{ $makul->kode }}">
+                                                            <td class="align-middle">{{ $makul->mata_kuliah }}</td>
+                                                            <td class="align-middle" style="width: 20px">
+                                                                {{ $makul->sks }}</td>
+                                                            <td class="text-center" style="width: 100px">
+                                                                <span class="btn btn-success"
+                                                                    data-makul="{{ $makul->mata_kuliah }}"
+                                                                    data-sks="{{ $makul->sks }}"
+                                                                    data-kode="{{ $makul->kode }}">
+                                                                    <i class="fas fa-plus"></i>
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    @endif
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            {{-- Input Box Matakuliah --}}
+                            <div id="sortable-list" class="sortable-list">
+                                <table class="table">
+                                    <tbody id="selected-courses">
+                                        {{-- Input Mata Kuliah di sini --}}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /.row -->
+        </div><!-- /.container-fluid -->
+    </div>
+@endsection

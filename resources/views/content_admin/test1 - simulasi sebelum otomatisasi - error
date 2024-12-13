@@ -1,0 +1,1367 @@
+
+@extends('ui_dashboard.dashboard')
+@section('title', 'Penjadwalan Mata Kuliah')
+@section('pageSize', 'min-height: 1300px;')
+@section('css')
+    <style>
+        .modal-xl {
+            max-width: 90%;
+            /* Change this percentage to make it larger or smaller */
+        }
+    </style>
+@endsection
+@section('headScript')
+    <link rel="stylesheet" href="{{ asset('plugins/icheck-bootstrap/icheck-bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('plugins/icheck-bootstrap/icheck-bootstrap.css') }}">
+@endsection
+@section('script')
+    <script>
+        $(document).ready(function() {
+
+            // ========================================
+            // Penjadwalan Mata Kuliah Semester Card (Regular Courses)
+            // ========================================
+            function loadMakul(semester) {
+                $.ajax({
+                    url: '{{ route('adminSchedulingInputAjax') }}',
+                    method: 'GET',
+                    data: {
+                        semester: semester
+                    },
+                    success: function(response) {
+                        $('#makulTable tbody').html(response.html);
+                        updateTextareaKodeAjar
+                            ();
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Terjadi kesalahan saat memuat data Mata Kuliah! Error: ' + error);
+                    }
+                });
+            }
+            loadMakul('{{ $semester }}');
+            $('#semesterSelector').change(function() {
+                var selectedSemester = $(this).val();
+                loadMakul(selectedSemester);
+            });
+
+            // ========================================
+            // Mata Kuliah Pilihan Card (Elective Courses)
+            // ========================================
+            function loadMakulPilihan() {
+                $.ajax({
+                    url: '{{ route('adminSchedulingInputAjax') }}',
+                    method: 'GET',
+                    data: {
+                        semester: '{{ $semester }}',
+                        is_pilihan: true
+                    },
+                    success: function(response) {
+                        $('#makulPilihanTable tbody').html(response
+                            .html);
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Terjadi kesalahan saat memuat data Mata Kuliah Pilihan! Error: ' +
+                            error);
+                    }
+                });
+            }
+            loadMakulPilihan();
+
+            // ========================================
+            // Event delegation for "Otomatis" buttons in both regular and Mata Kuliah Pilihan cards
+            // ========================================
+            $(document).on('click', '.btn-buat-kelas', function() {
+                var row = $(this).closest('tr');
+                var makulKode = row.data('kode');
+                var kodeInfo = row.data('info');
+                var kuota = $('#kuota-' + makulKode).val();
+                var jumlahMahasiswa = row.find('.jumlah-mahasiswa').text();
+                var jumlahKelas = Math.ceil(jumlahMahasiswa / kuota);
+                var isMakulPilihan = row.find('.makul-checkbox').length > 0;
+
+                if (!isMakulPilihan || row.find('.makul-checkbox').is(':checked')) {
+                    $('#class-rows-' + makulKode + ' tbody').empty();
+                    for (let i = 0; i < jumlahKelas; i++) {
+                        let classLetter = String.fromCharCode(65 + i);
+                        var newRow = `
+                            <tr data-info="${kodeInfo}" data-kode="${makulKode}" data-kelas="${classLetter}" data-semester="${row.data('semester')}" data-sks="${row.data('sks')}">
+                                <td>${classLetter}</td>
+                                <td>
+                                    <select class="form-control dosen1-select" name="dosen1_${makulKode}_${classLetter}" data-makul="${makulKode}" data-class="${classLetter}">
+                                        <option value="">Pilih Dosen 1</option>
+                                        @foreach ($dosens as $dosen)
+                                            <option value="{{ $dosen->kode_dosen }}">{{ $dosen->nama_dosen }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-control dosen2-select" name="dosen2_${makulKode}_${classLetter}" data-makul="${makulKode}" data-class="${classLetter}" disabled>
+                                        <option value="">Pilih Dosen 2 (Optional)</option>
+                                        @foreach ($dosens as $dosen)
+                                            <option value="{{ $dosen->kode_dosen }}">{{ $dosen->nama_dosen }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td class="kode-ajar">${kodeInfo} <span style="color: red;">(Dosen Belum Dipilih)</span></td>
+                                <td>
+                                    <button class="btn btn-danger btn-hapus-kelas" data-kelas="${classLetter}" data-kode="${makulKode}">Hapus</button>
+                                </td>
+                            </tr>`;
+                        $('#class-rows-' + makulKode + ' tbody').append(newRow);
+                    }
+                    attachDosenDropdownBehavior();
+                    updateTextareaKodeAjar();
+                }
+            });
+
+            function attachDosenDropdownBehavior() {
+                $('.dosen1-select').off('change').on('change', function() {
+                    const dosen1Value = $(this).val();
+                    const dosen2Dropdown = $(this).closest('tr').find('.dosen2-select');
+
+                    if (dosen1Value) {
+                        dosen2Dropdown.prop('disabled', false);
+                    } else {
+                        dosen2Dropdown.val('');
+                        dosen2Dropdown.prop('disabled', true);
+                    }
+                });
+            }
+
+            // ========================================
+            // Event handler for deleting class rows
+            // ========================================
+            $(document).on('click', '.btn-hapus-kelas', function() {
+                $(this).closest('tr').remove(); // Remove the class row
+                updateTextareaKodeAjar();
+            });
+
+            // ========================================
+            // Event handler for "Hapus Semua Kelas" button
+            // ========================================
+            $(document).on('click', '.btn-hapus-semua-kelas', function() {
+                var makulKode = $(this).data('kode'); // Get Mata Kuliah code
+                // Clear all class rows for this Mata Kuliah
+                $('#class-rows-' + makulKode + ' tbody').empty();
+                updateTextareaKodeAjar();
+            });
+
+            // ========================================
+            // Event handler for "Manual" dropdown items
+            // ========================================
+            $(document).on('click', '.manual-kelas-option', function(e) {
+                e.preventDefault(); // Prevent default anchor click behavior
+
+                var makulKode = $(this).data('kode');
+                var jumlahKelas = $(this).data('kelas');
+                var row = $('#row-makul-' + makulKode);
+                var kodeInfo = row.data('info');
+                var isMakulPilihan = row.find('.makul-checkbox').length > 0;
+                if (!isMakulPilihan || row.find('.makul-checkbox').is(':checked')) {
+                    $('#class-rows-' + makulKode + ' tbody').empty();
+                    for (let i = 0; i < jumlahKelas; i++) {
+                        let classLetter = String.fromCharCode(65 + i);
+                        var newRow = `
+                            <tr data-info="${kodeInfo}" data-kode="${makulKode}" data-kelas="${classLetter}" data-semester="${row.data('semester')}" data-sks="${row.data('sks')}">
+                                <td>${classLetter}</td>
+                                <td>
+                                    <select class="form-control dosen1-select" name="dosen1_${makulKode}_${classLetter}" data-makul="${makulKode}" data-class="${classLetter}">
+                                        <option value="">Pilih Dosen 1</option>
+                                        @foreach ($dosens as $dosen)
+                                            <option value="{{ $dosen->kode_dosen }}">{{ $dosen->nama_dosen }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-control dosen2-select" name="dosen2_${makulKode}_${classLetter}" data-makul="${makulKode}" data-class="${classLetter}">
+                                        <option value="">Pilih Dosen 2 (Optional)</option>
+                                        @foreach ($dosens as $dosen)
+                                            <option value="{{ $dosen->kode_dosen }}">{{ $dosen->nama_dosen }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td class="kode-ajar">${kodeInfo} <span style="color: red;">(Dosen Belum Dipilih)</span></td>
+                                <td>
+                                    <button class="btn btn-danger btn-hapus-kelas" data-kelas="${classLetter}" data-kode="${makulKode}">Hapus</button>
+                                </td>
+                            </tr>`;
+                        $('#class-rows-' + makulKode + ' tbody').append(newRow);
+                    }
+                    updateTextareaKodeAjar();
+                }
+            });
+
+            // ========================================
+            // Fetch and Update Dosen Options (For Dosen Selection)
+            // ========================================
+            function updateDosenOptions(row) {
+                var selectedDosen1 = row.find('.dosen1-select').val();
+                var selectedDosen2 = row.find('.dosen2-select').val();
+                var dosen1Select = row.find('.dosen1-select');
+                var dosen2Select = row.find('.dosen2-select');
+                dosen1Select.find('option').show();
+                dosen2Select.find('option').show();
+                if (selectedDosen2) {
+                    dosen1Select.find(`option[value="${selectedDosen2}"]`).hide();
+                }
+                if (selectedDosen1) {
+                    dosen2Select.find(`option[value="${selectedDosen1}"]`).hide();
+                }
+            }
+
+            $(document).on('change', '.dosen1-select', function() {
+                var row = $(this).closest('tr');
+                updateDosenOptions(row);
+
+                var classLetter = row.find('td:first').text();
+                var dosen1 = $(this).val();
+                var dosen2 = row.find('.dosen2-select').val();
+
+                updateKodeAjar(row, classLetter, dosen1, dosen2);
+            });
+
+            $(document).on('change', '.dosen2-select', function() {
+                var row = $(this).closest('tr');
+                updateDosenOptions(row);
+
+                var classLetter = row.find('td:first').text();
+                var dosen1 = row.find('.dosen1-select').val();
+                var dosen2 = $(this).val();
+
+                updateKodeAjar(row, classLetter, dosen1, dosen2);
+            });
+
+            function updateKodeAjar(row, classLetter, dosen1, dosen2) {
+                var kodeInfo = row.data('info');
+                var classType = dosen2 ? `S${classLetter} ${classLetter}` : classLetter;
+                var kodeDosen = dosen2 ? `${dosen1}/${dosen2}` : dosen1 ||
+                    '<span style="color: red;">Dosen Belum Dipilih</span>';
+                var kodeAjar = `${kodeInfo} ${classType} ${kodeDosen}`;
+                row.find('.kode-ajar').html(kodeAjar);
+
+                updateTextareaKodeAjar();
+            }
+
+            function updateTextareaKodeAjar() {
+                var kodeAjarTexts = [];
+
+                $('tr[data-info]').each(function() {
+                    var row = $(this);
+                    var kodeAjar = row.find('.kode-ajar').text();
+                    var makulKode = row.data('kode');
+                    var classLetter = row.data('kelas');
+                    var semester = row.data('semester');
+                    var sks = row.data('sks');
+                    var dosen1 = row.find('.dosen1-select').val();
+                    var dosen2 = row.find('.dosen2-select').val();
+                    var kuota = $('#kuota-' + makulKode).val();
+
+                    if (kodeAjar && kodeAjar.trim() !== "") {
+                        var namaDosen1 = row.find('.dosen1-select option:selected')
+                            .text();
+                        var namaDosen2 = dosen2 ? row.find('.dosen2-select option:selected').text() :
+                            '';
+                        var dosenFormatted = dosen2 ? `${dosen1}/${dosen2}` : dosen1;
+                        var namaDosenFormatted = dosen2 ? `${namaDosen1}/${namaDosen2}` : `${namaDosen1}`;
+                        var result =
+                            `["${kodeAjar}", "${makulKode}", "${dosenFormatted}", "${dosen1}", "${dosen2}", "${namaDosenFormatted}", "${classLetter}", "${semester}", "${sks}", "${kuota}"]`;
+                        kodeAjarTexts.push(result.trim());
+                    }
+                });
+                $('#inputDescription').val(kodeAjarTexts.join('\n'));
+            }
+
+            // ========================================
+            // Scheduling Form Submission (Save Button)
+            // ========================================
+            $('#scheduling-form').on('submit', function(e) {
+                e.preventDefault();
+                var formData = $(this).serialize();
+                $.ajax({
+                    url: '/admin/scheduling/input/save',
+                    method: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        alert('Data saved successfully!');
+                    },
+                    error: function(xhr, status, error) {
+                        alert('An error occurred while saving the data.');
+                    }
+                });
+            });
+
+            // ========================================
+            // Checkbox Limit for Mata Kuliah Pilihan
+            // ========================================
+            $(document).on('change', '.makul-checkbox', function() {
+                const maxSelected = 6;
+
+                const selected = $('.makul-checkbox:checked');
+                if (selected.length > maxSelected) {
+                    alert(`You can only select up to ${maxSelected} Mata Kuliah Pilihan.`);
+                    $(this).prop('checked', false);
+                }
+
+                // Disable unchecked checkboxes if the limit is reached
+                if (selected.length >= maxSelected) {
+                    $('.makul-checkbox:not(:checked)').prop('disabled', true);
+                } else {
+                    $('.makul-checkbox').prop('disabled', false);
+                }
+            });
+
+            // ========================================
+            // Fetch and display number of students for each Mata Kuliah
+            // ========================================
+            function fetchJumlahMahasiswa() {
+                let kodeMasaInput = '{{ $masaInput->kode_masa_input ?? '' }}';
+
+                if (!kodeMasaInput) {
+                    kodeMasaInput = $('#kode_masa_input').val();
+                }
+
+                $.ajax({
+                    url: '{{ route('get.jumlah.mahasiswa') }}',
+                    method: 'GET',
+                    data: {
+                        kode_masa_input: kodeMasaInput
+                    },
+                    success: function(response) {
+                        $.each(response, function(kode, jumlah) {
+                            let row = $('#row-makul-' + kode);
+                            if (row.length > 0) {
+                                row.find('.jumlah-mahasiswa').text(jumlah);
+                            }
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Error fetching jumlah mahasiswa:', xhr);
+                        alert("Failed to fetch jumlah mahasiswa. Please try again.");
+                    }
+                });
+            }
+            fetchJumlahMahasiswa();
+            $('#refreshJumlahMahasiswa').on('click', function() {
+                fetchJumlahMahasiswa();
+            });
+        });
+    </script>
+    <script>
+        $(document).ready(function() {
+            let kodeAjarSelectionCount = {};
+            let lecturerMap = {};
+            let timeMap = {};
+            let lecturerLoad = {}; // Tracks lecturer load per day
+            let lecturerAssignments = {}; // Tracks lecturer assignments in sessions to prevent duplicates
+
+            const maxLecturerLoad = 6; // Maximum lecturer load per day
+            let classroomCount = 7; // Example classroom count, to be replaced with actual value
+
+            function updateDropdownVisibility() {
+                $('.kode-ajar-dropdown option').each(function() {
+                    const optionValue = $(this).val();
+                    if (optionValue !== '' && optionValue !== 'N/A') {
+                        $(this).show();
+                    }
+                });
+
+                Object.keys(kodeAjarSelectionCount).forEach((kodeAjar) => {
+                    const count = kodeAjarSelectionCount[kodeAjar];
+                    if (count >= 1 && (kodeAjar.includes('SKS-2') || kodeAjar.includes('SKS-3'))) {
+                        $('.kode-ajar-dropdown').find(`option[value="${kodeAjar}"]`).hide();
+                    }
+                    if (count >= 2 && kodeAjar.includes('SKS-4')) {
+                        $('.kode-ajar-dropdown').find(`option[value="${kodeAjar}"]`).hide();
+                    }
+                });
+            }
+
+            function parseTextareaData() {
+                const kodeAjarData = [];
+                const textareaValue = $('#inputDescription').val().trim();
+
+                if (textareaValue) {
+                    const lines = textareaValue.split('\n');
+                    lines.forEach((line) => {
+                        try {
+                            const parsedLine = JSON.parse(line);
+                            const kodeAjarEntry = {
+                                kodeAjar: parsedLine[0],
+                                makulKode: parsedLine[1],
+                                dosen1: parsedLine[3],
+                                dosen2: parsedLine[4] || '',
+                                namaDosenFormatted: parsedLine[5],
+                                classLetter: parsedLine[6],
+                                semester: parsedLine[7],
+                                sks: parsedLine[8],
+                                kuota: parsedLine[9]
+                            };
+                            kodeAjarData.push(kodeAjarEntry);
+                        } catch (e) {
+                            console.error('Invalid JSON line:', line, 'Error:', e.message);
+                        }
+                    });
+                }
+                return kodeAjarData;
+            }
+
+            function populateDropdownOptions(kodeAjarData) {
+                const dropdowns = $('.kode-ajar-dropdown');
+
+                dropdowns.each(function() {
+                    const dropdown = $(this);
+                    dropdown.empty();
+                    dropdown.append('<option value="">Pilih Kode Ajar</option>');
+                    dropdown.append('<option value="N/A">N/A</option>');
+                    kodeAjarData.forEach((entry) => {
+                        if (entry.sks === 4) {
+                            dropdown.append(
+                                `<option value="${entry.kodeAjar}_1">${entry.kodeAjar}</option>`
+                            );
+                            dropdown.append(
+                                `<option value="${entry.kodeAjar}_2">${entry.kodeAjar}</option>`
+                            );
+                        } else {
+                            dropdown.append(
+                                `<option value="${entry.kodeAjar}">${entry.kodeAjar}</option>`
+                            );
+                        }
+                    });
+                });
+            }
+
+            function resetRowAlerts() {
+                $('.schedule-row').each(function() {
+                    const row = $(this);
+                    row.css('background-color', 'white');
+                    row.find('td:eq(13)').text(''); // Clear 'Keterangan' column
+                });
+            }
+
+            function checkForDuplicateLecturers() {
+                const lecturerMap = {};
+
+                $('.schedule-row').each(function() {
+                    const row = $(this);
+                    const keteranganCell = row.find('td:eq(13)');
+                    const dosen1 = row.find('td:eq(5)').text().trim();
+                    const dosen2 = row.find('td:eq(6)').text().trim();
+                    const day = row.data('day');
+                    const session = row.data('session');
+                    const daySessionKey = `${day}-${session}`;
+                    // row.css('background-color', '');
+                    // keteranganCell.text('');
+
+                    if (!lecturerMap[daySessionKey]) {
+                        lecturerMap[daySessionKey] = [];
+                    }
+
+                    [dosen1, dosen2].forEach((dosen) => {
+                        if (dosen && lecturerMap[daySessionKey].includes(dosen)) {
+                            row.css('background-color', 'red');
+                            keteranganCell.text(
+                                `Dosen "${dosen}" sudah ditempatkan pada sesi ini.`);
+                            console.warn(
+                                `Duplicate lecturer detected: ${dosen} on ${daySessionKey}`);
+                        } else if (dosen) {
+                            lecturerMap[daySessionKey].push(dosen);
+                        }
+                    });
+                });
+            }
+
+            $(document).on('change', '.kode-ajar-dropdown', function() {
+                const selectedValue = $(this).val();
+                const row = $(this).closest('tr');
+                const originalDay = row.data('day');
+                const originalSessionTime = row.data('session-time');
+                const previousValue = $(this).data('previousValue');
+                const originalClassroom = row.data('classroom');
+
+                if (selectedValue === 'N/A') {
+                    $(this).data('previousValue', '');
+                    row.find('td').not(':eq(2)').empty();
+                    row.css('background-color', 'black')
+                    row.find('td:eq(0)').text('');
+                    row.find('td:eq(1)').text('');
+                    row.find('td:eq(12)').text('');
+                    updateDropdownVisibility();
+                    return;
+                }
+
+                if (selectedValue === '') {
+                    $(this).data('previousValue', '');
+                    row.find('td:first').text(originalDay);
+                    row.find('td:eq(1)').text(originalSessionTime);
+                    row.find('td:eq(12)').text(originalClassroom);
+                    row.find('td').not(':eq(0), :eq(1), :eq(2), :eq(12)').empty();
+                    row.css('background-color', 'gray');
+                    updateDropdownVisibility();
+                    return;
+                }
+
+                checkForDuplicateLecturers();
+            });
+
+            $(document).on('change', '.dosen1-select, .dosen2-select', function() {
+                checkForDuplicateLecturers();
+            });
+
+            $('#buatJadwalModal').on('hidden.bs.modal', function() {
+                lecturerMap = {};
+                timeMap = {};
+                lecturerLoad = {}; // Reset lecturer load tracking
+                resetRowAlerts(); // Reset all alerts when the modal is closed
+                kodeAjarSelectionCount = {};
+                updateDropdownVisibility();
+            });
+
+            $('#buatJadwalModal').on('show.bs.modal', function() {
+                $.ajax({
+                    url: '/admin/scheduling/input/admin-scheduling-create',
+                    method: 'GET',
+                    success: function(response) {
+                        var jadwalBody = $('#jadwalData tbody');
+                        jadwalBody.empty();
+
+                        response.forEach(function(row) {
+                            if (row.empty) {
+                                jadwalBody.append(
+                                    '<tr style="background-color: black;"><td colspan="14">&nbsp;</td></tr>'
+                                );
+                            } else {
+                                var newRow = `
+                                    <tr class="schedule-row" data-day="${row.day}" data-session="${row.session}" data-classroom="${row.classroom}" style="background-color: gray;">
+                                        <td>${row.day}</td>
+                                        <td>${row.session_time}</td>
+                                        <td>
+                                            <select class="kode-ajar-dropdown form-control">
+                                                <option value="">Pilih Kode Ajar</option>
+                                                <option value="N/A">N/A</option> <!-- Added N/A option -->
+                                            </select>
+                                        </td>
+                                        <td></td>
+                                        <td></td> <!-- Keterangan Column -->
+                                        <!-- Additional empty columns -->
+                                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>${row.classroom}</td><td></td>
+                                    </tr>
+                                `;
+                                jadwalBody.append(newRow);
+                            }
+                        });
+
+                        const kodeAjarData = parseTextareaData();
+                        populateDropdownOptions(kodeAjarData);
+                        updateTableRowOnKodeAjarSelect(kodeAjarData);
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Error while fetching schedule data: ' + error);
+                    }
+                });
+            });
+
+            function checkForTimeConflicts() {
+                const timeMap = {};
+
+                $('.schedule-row').each(function() {
+                    const row = $(this);
+                    const keteranganCell = row.find('td:eq(13)');
+                    const day = row.data('day');
+                    const session = row.data('session');
+                    const startTime = row.find('td:eq(1)').data('start-time');
+                    const endTime = row.find('td:eq(1)').data('end-time');
+                    const classroom = row.find('td:eq(12)').text().trim();
+                    // row.css('background-color', '');
+                    // keteranganCell.text('');
+
+
+                    if (!startTime || !endTime || !classroom) return;
+
+                    const dayClassroomKey = `${day}-${classroom}`;
+
+                    if (!timeMap[dayClassroomKey]) {
+                        timeMap[dayClassroomKey] = {};
+                    }
+
+                    function checkSessionPair(previousSession, currentSession) {
+                        const previous = timeMap[dayClassroomKey][previousSession];
+                        if (previous) {
+                            if (isTimeOverlap(previous.startTime, previous.endTime, startTime, endTime)) {
+                                previous.row.css('background-color', 'red');
+                                previous.row.find('td:eq(13)').text(
+                                    'Waktu kuliah bertabrakan dengan sesi lain.');
+                                row.css('background-color', 'red');
+                                keteranganCell.text('Waktu kuliah bertabrakan dengan sesi lain.');
+                            }
+                        }
+                    }
+
+                    if (session === 2) {
+                        checkSessionPair(1, 2);
+                    } else if (session === 4) {
+                        checkSessionPair(3, 4);
+                    }
+
+                    timeMap[dayClassroomKey][session] = {
+                        startTime: startTime,
+                        endTime: endTime,
+                        row: row
+                    };
+                });
+            }
+
+            function isTimeOverlap(startTime1, endTime1, startTime2, endTime2) {
+                return (startTime1 < endTime2 && startTime2 < endTime1);
+            }
+
+            // Handle changes in dropdown (Kode Ajar or lecturer selection)
+            $(document).on('change', '.kode-ajar-dropdown, .dosen1-select, .dosen2-select', function() {
+                resetRowAlerts(); // Clear all previous alerts
+                checkForDuplicateLecturers(); // Check for lecturer duplicates
+                checkForTimeConflicts(); // Check for time conflicts
+            });
+
+            $(document).on('change', '.kode-ajar-dropdown', function() {
+                const selectedValue = $(this).val();
+                const row = $(this).closest('tr');
+                const originalDay = row.data('day');
+                const originalSessionTime = row.data('session-time');
+                const previousValue = $(this).data('previousValue');
+                const originalClassroom = row.data('classroom');
+                const day = row.data('day');
+                const session = row.data('session');
+                const sks = getSKSFromValue(selectedValue);
+                const newTime = calculateTimeForSKS(day, session, sks);
+
+                if (selectedValue === 'N/A') {
+                    $(this).data('previousValue', '');
+                    row.find('td').not(':eq(2)').empty();
+                    row.css('background-color', 'black')
+                    row.find('td:eq(0)').text('');
+                    row.find('td:eq(1)').text('');
+                    row.find('td:eq(12)').text('');
+                    updateDropdownVisibility();
+                    return;
+                }
+
+                if (selectedValue === '') {
+                    $(this).data('previousValue', '');
+                    row.find('td:first').text(originalDay);
+                    row.find('td:eq(1)').text(originalSessionTime);
+                    row.find('td:eq(12)').text(originalClassroom);
+                    row.find('td').not(':eq(0), :eq(1), :eq(2), :eq(12)').empty();
+                    row.css('background-color', 'gray');
+                    updateDropdownVisibility();
+                    return;
+                }
+
+                if (newTime) {
+                    const [startTime, endTime] = newTime.split(' s/d ');
+                    row.find('td:eq(1)').data('start-time', startTime);
+                    row.find('td:eq(1)').data('end-time', endTime);
+                    row.find('td:eq(1)').text(newTime);
+                }
+                checkForTimeConflicts();
+            });
+
+            function getSKSFromValue(kodeAjar) {
+                var sksMatch = kodeAjar.match(/SKS-(\d+)/);
+                return sksMatch ? parseInt(sksMatch[1]) : 0;
+            }
+
+            function calculateTimeForSKS(day, session, sks) {
+                var startTime, endTime;
+
+                if (['Senin', 'Selasa', 'Rabu', 'Kamis'].includes(day)) {
+                    switch (session) {
+                        case 1:
+                            startTime = '07:30';
+                            endTime = sks === 2 || sks === 4 ? '09:10' : '10:00';
+                            break;
+                        case 2:
+                            startTime = sks === 2 || sks === 4 ? '10:10' : '09:20';
+                            endTime = '11:50';
+                            break;
+                        case 3:
+                            startTime = '12:45';
+                            endTime = sks === 2 || sks === 4 ? '14:25' : '15:15';
+                            break;
+                        case 4:
+                            startTime = '14:45';
+                            endTime = sks === 2 || sks === 4 ? '16:25' : '17:15';
+                            break;
+                    }
+                }
+
+                if (day === 'Jumat') {
+                    switch (session) {
+                        case 1:
+                            startTime = '07:30';
+                            endTime = '09:10';
+                            break;
+                        case 2:
+                            startTime = '09:20';
+                            endTime = '11:00';
+                            break;
+                        case 3:
+                            startTime = '13:00';
+                            endTime = sks === 2 || sks === 4 ? '14:40' : '15:30';
+                            break;
+                        case 4:
+                            startTime = '15:35';
+                            endTime = '17:15';
+                            break;
+                    }
+                }
+                return `${startTime} s/d ${endTime}`;
+            }
+
+            function updateTableRowOnKodeAjarSelect(kodeAjarData) {
+                $('.kode-ajar-dropdown').on('change', function() {
+                    const selectedValue = $(this).val();
+                    const row = $(this).closest('tr');
+                    const originalDay = row.data('day');
+                    const originalSessionTime = row.data('session-time');
+                    const previousValue = $(this).data('previousValue');
+                    const originalClassroom = row.data('classroom');
+
+                    if (previousValue && previousValue !== 'N/A') {
+                        if (kodeAjarSelectionCount[previousValue]) {
+                            kodeAjarSelectionCount[previousValue]--;
+                            if (kodeAjarSelectionCount[previousValue] === 0) {
+                                delete kodeAjarSelectionCount[previousValue];
+                            }
+                        }
+                    }
+
+                    if (selectedValue === 'N/A') {
+                        $(this).data('previousValue', '');
+                        row.find('td').not(':eq(2)').empty();
+                        row.css('background-color', 'black')
+                        row.find('td:eq(0)').text('');
+                        row.find('td:eq(1)').text('');
+                        row.find('td:eq(12)').text('');
+                        updateDropdownVisibility();
+                        return;
+                    }
+
+                    if (selectedValue === '') {
+                        $(this).data('previousValue', '');
+                        row.find('td:first').text(originalDay);
+                        row.find('td:eq(1)').text(originalSessionTime);
+                        row.find('td:eq(12)').text(originalClassroom);
+                        row.find('td').not(':eq(0), :eq(1), :eq(2), :eq(12)').empty();
+                        row.css('background-color', 'gray');
+                        updateDropdownVisibility();
+                        return;
+                    }
+
+                    const entry = kodeAjarData.find((e) => e.kodeAjar === selectedValue);
+
+                    if (entry) {
+                        row.find('td:first').text(originalDay);
+                        row.find('td:eq(1)').text(originalSessionTime);
+                        row.find('td:eq(3)').text(entry.makulKode);
+                        row.find('td:eq(4)').text(entry.dosen1 + (entry.dosen2 ? `/${entry.dosen2}` : ''));
+                        row.find('td:eq(5)').text(entry.dosen1);
+                        row.find('td:eq(6)').text(entry.dosen2 || '');
+                        row.find('td:eq(7)').text(entry.classLetter);
+                        row.find('td:eq(8)').text(entry.semester);
+                        row.find('td:eq(9)').text(entry.sks);
+                        row.find('td:eq(10)').text(entry.kuota);
+                        row.find('td:eq(11)').text(entry.namaDosenFormatted);
+                        row.find('td:eq(12)').text(originalClassroom);
+                        row.css('background-color', 'white');
+
+                        $(this).data('previousValue', selectedValue);
+
+                        if (selectedValue in kodeAjarSelectionCount) {
+                            kodeAjarSelectionCount[selectedValue]++;
+                        } else {
+                            kodeAjarSelectionCount[selectedValue] = 1;
+                        }
+
+                        row.css('background-color', 'white');
+                        updateDropdownVisibility();
+                    }
+                    checkForDuplicateLecturers();
+                    checkForTimeConflicts();
+                });
+            }
+
+            // Simulate the selection process to ensure optimal assignment
+            function simulateOptimalSelection(kodeAjarData) {
+                let optimalSolution = {};
+                let minConflicts = Infinity;
+
+                $('.schedule-row').each(function(index) {
+                    const row = $(this);
+                    const day = row.data('day');
+                    const session = row.data('session');
+                    const classroom = row.data('classroom');
+
+                    let selectedKodeAjar = '';
+                    let bestOption = '';
+                    let minLecturerLoadDifference = Infinity;
+
+                    row.find('.kode-ajar-dropdown option').each(function() {
+                        const optionValue = $(this).val();
+                        if (optionValue === '' || optionValue === 'N/A') return;
+
+                        const kodeAjarEntry = kodeAjarData.find(e => e.kodeAjar === optionValue);
+                        const lecturers = [kodeAjarEntry.dosen1, kodeAjarEntry.dosen2].filter(
+                            Boolean);
+                        const sks = parseInt(kodeAjarEntry.sks);
+
+                        // Check if lecturer is already assigned in the same session for the same classroom
+                        if (isLecturerAssignedInSession(lecturers, day, session, classroom)) {
+                            return;
+                        }
+
+                        // Ensure SKS selection doesn't violate session rules
+                        const previousSKS = optimalSolution[`${day}-${session-1}-${classroom}`]
+                            ?.sks || 0;
+                        if (!canSelectSKS(sks, session, classroom, day, previousSKS)) {
+                            return;
+                        }
+
+                        // Calculate lecturer load
+                        let totalLoad = 0;
+                        for (let lecturer of lecturers) {
+                            const lecturerCurrentLoad = lecturerLoad[lecturer] || 0;
+                            const newLoad = calculateLecturerLoad(sks, lecturers.length);
+                            totalLoad += lecturerCurrentLoad + newLoad;
+                        }
+
+                        // Check if this option results in a better load balance
+                        const loadDifference = Math.abs(totalLoad - 6); // Target: 6
+                        if (loadDifference < minLecturerLoadDifference) {
+                            minLecturerLoadDifference = loadDifference;
+                            bestOption = optionValue;
+                        }
+                    });
+
+                    if (bestOption) {
+                        selectedKodeAjar = bestOption;
+                        const kodeAjarEntry = kodeAjarData.find(e => e.kodeAjar === bestOption);
+                        const lecturers = [kodeAjarEntry.dosen1, kodeAjarEntry.dosen2].filter(Boolean);
+
+                        // Assign the best option and update lecturer load
+                        for (let lecturer of lecturers) {
+                            const load = calculateLecturerLoad(parseInt(kodeAjarEntry.sks), lecturers
+                                .length);
+                            lecturerLoad[lecturer] = (lecturerLoad[lecturer] || 0) + load;
+                        }
+
+                        // Save the optimal solution per classroom
+                        optimalSolution[`${day}-${session}-${classroom}`] = {
+                            kodeAjar: selectedKodeAjar,
+                            sks: parseInt(kodeAjarEntry.sks),
+                            lecturers: lecturers
+                        };
+                    }
+                });
+
+                return optimalSolution;
+            }
+
+            // Helper function to count the number of conflicts in a solution
+            function countConflicts(tempLecturerLoad) {
+                let conflictCount = 0;
+
+                Object.keys(tempLecturerLoad).forEach(daySessionKey => {
+                    const lecturers = tempLecturerLoad[daySessionKey];
+                    const uniqueLecturers = new Set(lecturers);
+                    if (uniqueLecturers.size < lecturers.length) {
+                        conflictCount += lecturers.length - uniqueLecturers.size;
+                    }
+                });
+
+                return conflictCount;
+            }
+
+            // Update the autoSelectDropdownsWithRules function to handle new SKS-4 structure
+            function autoSelectDropdownsWithRules() {
+                const kodeAjarData = parseTextareaData();
+                const optimizedData = optimizeKodeAjarData(kodeAjarData);
+                let unassignedKodeAjar = kodeAjarData.map(entry => entry.kodeAjar); // Track unassigned values
+
+                $('.schedule-row').each(function() {
+                    const dropdown = $(this).find('.kode-ajar-dropdown');
+                    const day = $(this).data('day');
+                    const session = $(this).data('session');
+                    const classroom = $(this).data('classroom');
+                    let availableOption = '';
+
+                    dropdown.find('option').each(function() {
+                        const value = $(this).val();
+                        const baseValue = value.split('_')[0]; // Handle '_1' or '_2' for SKS-4
+                        if (value !== '' && value !== 'N/A' &&
+                            (!kodeAjarSelectionCount[baseValue] ||
+                                (kodeAjarSelectionCount[baseValue] < 2 && baseValue.includes(
+                                    'SKS-4')))) {
+                            const entry = kodeAjarData.find(e => e.kodeAjar === baseValue);
+                            if (entry) {
+                                const lecturers = [entry.dosen1, entry.dosen2].filter(Boolean);
+                                let canSelect = true;
+
+                                // Check lecturer constraints (ensure not assigned in same session)
+                                if (isLecturerAssignedInSession(lecturers, day, session)) {
+                                    canSelect = false;
+                                }
+
+                                // Check for SKS value constraints
+                                if (!canSelectSKS(entry.sks, session, classroom)) {
+                                    canSelect = false;
+                                }
+
+                                if (canSelect) {
+                                    availableOption = value;
+                                    return false; // Exit loop on first suitable option
+                                }
+                            }
+                        }
+                    });
+
+                    if (availableOption) {
+                        dropdown.val(availableOption).trigger('change');
+                        unassignedKodeAjar = unassignedKodeAjar.filter(ka => ka !== availableOption.split(
+                            '_')[0]); // Remove assigned kodeAjar
+                    } else {
+                        dropdown.val('N/A').trigger('change');
+                    }
+                });
+            }
+
+            // Helper function to simulate lecturer assignment checking
+            function isLecturerAssignedInSessionSim(lecturers, day, session, tempLecturerLoad) {
+                const daySessionKey = `${day}-${session}`;
+                if (!tempLecturerLoad[daySessionKey]) {
+                    tempLecturerLoad[daySessionKey] = [];
+                }
+
+                for (let lecturer of lecturers) {
+                    if (tempLecturerLoad[daySessionKey].includes(lecturer)) {
+                        console.warn(`Lecturer ${lecturer} already assigned in ${daySessionKey}`);
+                        return true;
+                    }
+                }
+
+                // Simulate adding the lecturers to this session
+                tempLecturerLoad[daySessionKey].push(...lecturers);
+                return false;
+            }
+
+            // Function to calculate the lecturer load
+            function calculateLecturerLoad(sks, numLecturers) {
+                return sks * (1 / numLecturers);
+            }
+
+            // Check if lecturer is already assigned in the same session
+            function isLecturerAssignedInSession(lecturers, day, session, classroom) {
+                const daySessionKey = `${day}-${session}-${classroom}`;
+                if (!lecturerAssignments[daySessionKey]) {
+                    lecturerAssignments[daySessionKey] = [];
+                }
+
+                for (let lecturer of lecturers) {
+                    if (lecturerAssignments[daySessionKey].includes(lecturer)) {
+                        console.warn(
+                            `Lecturer ${lecturer} already assigned in session ${session} on ${day}, classroom ${classroom}`
+                        );
+                        return true;
+                    }
+                }
+
+                // If not assigned, we will simulate assigning the lecturer(s)
+                lecturerAssignments[daySessionKey].push(...lecturers);
+                return false;
+            }
+
+            // Ensure SKS selection doesn't violate session rules
+            function canSelectSKS(sks, session, classroom, day, previousSKS) {
+                // Monday to Thursday logic
+                if (['Senin', 'Selasa', 'Rabu', 'Kamis'].includes(day)) {
+                    if (session === 1 && previousSKS === 3 && sks === 3) {
+                        console.warn('Session 2 limited to SKS 2 or 4 due to SKS-3 in session 1');
+                        return false;
+                    }
+                    if (session === 3 && previousSKS === 3) {
+                        console.warn('Session 4 must be N/A due to SKS-3 in session 3');
+                        return false;
+                    }
+                }
+
+                // Friday (Jumat) logic
+                if (day === 'Jumat') {
+                    if ((session === 1 || session === 2) && sks === 3) {
+                        console.warn('SKS-3 cannot be chosen in session 1 or 2 on Friday');
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            // Ensure SKS doesn't overlap or violate session rules
+            function canSelectSKS(sks, session, classroom, day) {
+                // Monday to Thursday logic
+                if (['Senin', 'Selasa', 'Rabu', 'Kamis'].includes(day)) {
+                    if (session === 1) {
+                        // Session 1 rules for SKS-3 limiting Session 2
+                        if (sks === 3) {
+                            const session2 = $(`.schedule-row[data-session="2"][data-classroom="${classroom}"]`);
+                            // Limit session 2 to SKS-2 or 4
+                            session2.find('option').each(function() {
+                                const value = $(this).val();
+                                if (value.includes('SKS-3')) {
+                                    $(this).hide(); // Hide SKS-3 option
+                                }
+                            });
+                        }
+                    }
+
+                    if (session === 3 && sks === 3) {
+                        // If session 3 is SKS-3, session 4 must become N/A due to time conflict
+                        const session4 = $(`.schedule-row[data-session="4"][data-classroom="${classroom}"]`);
+                        if (session4.length) {
+                            session4.find('.kode-ajar-dropdown').val('N/A').trigger('change');
+                        }
+                        return false; // Indicate conflict
+                    }
+                }
+
+                // Friday (Jumat) logic
+                if (day === 'Jumat') {
+                    if (session === 1 || session === 2) {
+                        if (sks === 3) {
+                            console.warn(`SKS-3 cannot be chosen in session ${session} on Jumat.`);
+                            return false; // SKS-3 is not allowed in session 1 or 2 on Friday
+                        }
+                    }
+
+                    if (session === 3 && sks === 3) {
+                        const session4 = $(`.schedule-row[data-session="4"][data-classroom="${classroom}"]`);
+                        if (session4.length) {
+                            // Limit session 4 to SKS-2 only
+                            session4.find('option').each(function() {
+                                const value = $(this).val();
+                                if (value.includes('SKS-3') || value.includes('SKS-4')) {
+                                    $(this).hide(); // Hide SKS-3 and SKS-4 options
+                                }
+                            });
+                        }
+                    }
+                }
+
+                return true; // No conflict, SKS can be selected
+            }
+
+            // Function to check if a lecturer's daily load is within limit
+            function isLecturerOverloaded(lecturer, day, sks, lecturerCount) {
+                const load = sks * 1 / lecturerCount;
+                if (!lecturerLoad[day]) {
+                    lecturerLoad[day] = {};
+                }
+                if (!lecturerLoad[day][lecturer]) {
+                    lecturerLoad[day][lecturer] = 0;
+                }
+                if (lecturerLoad[day][lecturer] + load > maxLecturerLoad) {
+                    console.warn(
+                        `Lecturer ${lecturer} overloaded on ${day} with current load ${lecturerLoad[day][lecturer]} + ${load}`
+                    );
+                    return true;
+                }
+                lecturerLoad[day][lecturer] += load;
+                return false;
+            }
+
+            // Example use in your existing dropdown selection logic
+            function validateSemesterAssignments(kodeAjarData) {
+                $('.schedule-row').each(function() {
+                    const row = $(this);
+                    const session = row.data('session');
+                    const classroom = row.data('classroom');
+                    const semester = row.find('td:eq(8)').text().trim(); // Assuming semester is in column 8
+
+                    // Track and validate the semester assignment
+                    if (!trackSemesterInSession(semester, session, classroom)) {
+                        row.css('background-color', 'yellow');
+                        row.find('td:eq(13)').text('Too many semesters assigned in this session');
+                    }
+                });
+            }
+
+            // Apply the optimal selection
+            function applyOptimalSelection(optimalSolution) {
+                $('.schedule-row').each(function() {
+                    const row = $(this);
+                    const day = row.data('day');
+                    const session = row.data('session');
+                    const classroom = row.data('classroom');
+                    const rowKey = `${day}-${session}-${classroom}`;
+
+                    if (optimalSolution[rowKey]) {
+                        const {
+                            kodeAjar
+                        } = optimalSolution[rowKey];
+                        row.find('.kode-ajar-dropdown').val(kodeAjar).trigger('change');
+                    } else {
+                        row.find('.kode-ajar-dropdown').val('N/A').trigger('change');
+                    }
+                });
+            }
+
+            // Bind the simulation and application on button click
+            $('#buatOtomatis').on('click', function() {
+                console.clear();
+                console.log('Starting simulation...');
+                const kodeAjarData = parseTextareaData();
+                const optimalSelection = simulateOptimalSelection(kodeAjarData);
+
+                if (optimalSelection) {
+                    console.log('Optimal selection found. Applying...');
+                    applyOptimalSelection(optimalSelection);
+                } else {
+                    console.error('No optimal selection could be found.');
+                }
+            });
+        });
+    </script>
+@endsection
+@section('content')
+    <div class="content">
+        <div class="container-fluid">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title center-text">Penjadwalan</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse" title="Collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Input Configuration (Textarea for Kode Ajar) -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="inputDescription">Kode Ajar</label>
+                                <textarea id="inputDescription" name="inputDescription" class="form-control" rows="4" style="height: 121px;"
+                                    readonly></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Buat Jadwal Button -->
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success btn-block" data-toggle="modal"
+                            data-target="#buatJadwalModal">Buat Jadwal</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-6">
+                    <!-- Regular Mata Kuliah Table (Penjadwalan Mata Kuliah Semester Genap) -->
+                    <div class="card card-primary card-outline collapsed-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Penjadwalan Mata Kuliah Semester
+                                {{ $semester == 0 ? 'Ganjil' : 'Genap' }}</h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <table id="makulTable" class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th width="5%">No</th>
+                                        <th width="25%">Mata Kuliah</th>
+                                        <th width="25%">Jumlah Mahasiswa</th>
+                                        <th width="20%">Kuota Kelas</th>
+                                        <th width="25%">Aksi Jumlah Kelas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($makuls as $makul)
+                                        <tr id="row-makul-{{ $makul->kode }}" data-kode="{{ $makul->kode }}"
+                                            data-info="{{ $makul->mata_kuliah }} SEM-{{ $makul->semester }} SKS-{{ $makul->sks }}">
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>{{ $makul->mata_kuliah }}</td>
+                                            <td class="jumlah-mahasiswa">{{ $jumlahMahasiswa[$makul->kode] ?? 0 }}</td>
+                                            <td>
+                                                <input type="number" name="kuota_{{ $makul->kode }}"
+                                                    id="kuota-{{ $makul->kode }}" class="form-control" min="1"
+                                                    max="99" value="20">
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-primary btn-buat-kelas"
+                                                    data-kode="{{ $makul->kode }}">Buat
+                                                    Kelas</button>
+                                            </td>
+                                        </tr>
+                                        <tr class="class-rows" id="class-rows-{{ $makul->kode }}">
+                                            <td colspan="5">
+                                                <table class="table table-bordered">
+                                                    <tbody></tbody>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <!-- Mata Kuliah Pilihan Table (IsPilihan = True) -->
+                    <div class="card card-primary card-outline collapsed-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Mata Kuliah Pilihan</h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <table id="makulPilihanTable" class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th width="3%"></th> <!-- Add space for styled checkbox -->
+                                        <th width="2%">No</th>
+                                        <th width="25%">Mata Kuliah</th>
+                                        <th width="25%">Jumlah Mahasiswa</th>
+                                        <th width="20%">Kuota Kelas</th>
+                                        <th width="25%">Aksi Jumlah Kelas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($makulPilihan as $makul)
+                                        <tr id="row-makul-{{ $makul->kode }}">
+                                            <!-- Checkbox column -->
+                                            <td>
+                                                <div class="icheck-pomegranate d-inline">
+                                                    <input type="checkbox" class="makul-checkbox"
+                                                        id="checkbox{{ $makul->kode }}" name="makulPilihan[]"
+                                                        value="{{ $makul->kode }}">
+                                                    <label for="checkbox{{ $makul->kode }}"></label>
+                                                </div>
+                                            </td>
+
+                                            <!-- Other columns -->
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>
+                                                <div class="row">
+                                                    {{ $makul->mata_kuliah }}
+                                                </div>
+                                                <div class="row">
+                                                    ({{ $makul->kode }})
+                                                </div>
+                                            </td>
+                                            <td class="jumlah-mahasiswa">{{ $jumlahMahasiswa[$makul->kode] ?? 0 }}</td>
+                                            <td>
+                                                <input type="number" name="kuota_{{ $makul->kode }}"
+                                                    id="kuota-{{ $makul->kode }}" class="form-control" min="1"
+                                                    max="99" value="20">
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-primary btn-buat-kelas"
+                                                    data-kode="{{ $makul->kode }}">Buat
+                                                    Kelas</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Special Mata Kuliah: Kerja Praktik, PMKM, TA 1, TA 2 -->
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">Kerja Praktik, PMKM, TA 1, TA 2</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Mata Kuliah</th>
+                                <th>Jumlah Mahasiswa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($specialMakuls as $makul)
+                                <tr id="row-makul-{{ $makul->kode }}">
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td>{{ $makul->mata_kuliah }}</td>
+                                    <td class="jumlah-mahasiswa">{{ $jumlahMahasiswa[$makul->kode] ?? 0 }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal HTML -->
+    <div class="modal fade" id="buatJadwalModal" tabindex="-1" aria-labelledby="buatJadwalModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="buatJadwalModalLabel">Jadwal Kelas</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- Display the fetched data here as a string -->
+                    <!-- Otomatis Button -->
+                    <div class="col-12">
+                        <button class="btn btn-success btn-block" id="buatOtomatis">Buat Otomatis</button>
+                    </div>
+                    <div id="jadwalData">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th width="5%">Hari</th>
+                                    <th width="10%">Jadwal Kuliah</th>
+                                    <th width="20%">Pilih Kode Ajar</th>
+                                    <th width="10%">Kode MK</th>
+                                    <th width="5%">Kode Dosen</th>
+                                    <th width="3%">Dosen 1</th>
+                                    <th width="3%">Dosen 2</th>
+                                    <th width="2%">Kelas</th>
+                                    <th width="2%">SMTR</th>
+                                    <th width="2%">SKS</th>
+                                    <th width="3%">Kapasitas</th>
+                                    <th width="15%">Nama Pengajar</th>
+                                    <th width="3%">Ruang</th>
+                                    <th width="17%">Keterangan</th> <!-- New column for Keterangan -->
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Schedule rows will be inserted here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-primary">Save Jadwal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection

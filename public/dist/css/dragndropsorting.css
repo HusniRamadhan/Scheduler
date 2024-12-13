@@ -1,0 +1,11 @@
+.sortable-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.sortable-item {
+    background-color: #f4f4f4;
+    border: 1px solid #ccc;
+    margin-bottom: 5px;
+    padding: 10px;
+}
